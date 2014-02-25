@@ -1,0 +1,16 @@
+# Rename this file to repos.yml
+# and fill it out with the names and paths of repositories to serve.
+#
+
+development:
+  - slug: repo-slug
+    path: ~/path/to/repo
+    dir: data/
+staging:
+  - slug: repo-slug
+    path: /path/to/repo
+    dir: data/
+production:
+  - slug: repo-slug
+    path: /path/to/repo
+    dir: data/
