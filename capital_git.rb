@@ -76,7 +76,9 @@ class CapitalGit < Sinatra::Base
 
     if !repo.bare?
       repo.reset(commit, :hard)
-      repo.push("origin", [repo.head.name])
+      if repo.remotes.map {|r| r.name}.include? "origin"
+        repo.push("origin", [repo.head.name])
+      end
     end
 
     return options.to_json
