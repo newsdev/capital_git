@@ -1,5 +1,8 @@
 require 'sinatra/base'
-require 'debugger'
+require 'yaml'
+if ENV['RACK_ENV'] == "development"
+  require 'byebug'
+end
 
 class CapitalGit < Sinatra::Base
 
@@ -21,7 +24,7 @@ class CapitalGit < Sinatra::Base
     @repo = @@repos[params[:repo]]
     repo = Rugged::Repository.new(@repo[:path])
     
-    repo.lookup(repo.head.target).tree.walk_blobs do |root,entry|
+    repo.head.target.tree.walk_blobs do |root,entry|
       if root[0,5] == @repo[:dir]
         path = File.join(root, entry[:name])
         resp[:items] << {:entry => entry, :path => path}
@@ -38,7 +41,7 @@ class CapitalGit < Sinatra::Base
     @repo = @@repos[params[:repo]]
     repo = Rugged::Repository.new(@repo[:path])
 
-    repo.lookup(repo.head.target).tree.walk_blobs do |root,entry|
+    repo.head.target.tree.walk_blobs do |root,entry|
       if root[0,5] == @repo[:dir]
         if File.join(root, entry[:name]) == path
           blob = repo.read(entry[:oid])
@@ -63,7 +66,7 @@ class CapitalGit < Sinatra::Base
 
     options = {}
     updated_oid = repo.write(text.force_encoding("UTF-8"), :blob)
-    tree = repo.lookup(repo.head.target).tree
+    tree = repo.head.target.tree
 
     options[:tree] = update_tree(repo, tree, path, updated_oid)
     options[:author] = committer

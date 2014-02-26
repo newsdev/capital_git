@@ -1,16 +1,19 @@
+GIT
+  remote: git://github.com/libgit2/rugged.git
+  revision: 62e5dc64190acc46902b0a1807a5d0160f1784d3
+  branch: development
+  submodules: true
+  specs:
+    rugged (0.19.0)
+
 GEM
   remote: http://rubygems.org/
   specs:
-    byebug (2.6.0)
+    byebug (2.7.0)
       columnize (~> 0.3)
       debugger-linecache (~> 1.2)
     columnize (0.3.6)
-    debugger (1.6.2)
-      columnize (>= 0.3.1)
-      debugger-linecache (~> 1.2.0)
-      debugger-ruby_core_source (~> 1.2.3)
     debugger-linecache (1.2.0)
-    debugger-ruby_core_source (1.2.3)
     json (1.8.1)
     kgio (2.9.2)
     rack (1.5.2)
@@ -21,7 +24,6 @@ GEM
       rack (~> 1.1)
       unicorn (~> 4.8)
     raindrops (0.13.0)
-    rugged (0.19.0)
     shotgun (0.9)
       rack (>= 1.0)
     sinatra (1.4.4)
@@ -39,9 +41,8 @@ PLATFORMS
 
 DEPENDENCIES
   byebug
-  debugger
   json
   rainbows
-  rugged
+  rugged!
   shotgun
   sinatra
