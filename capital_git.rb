@@ -59,7 +59,7 @@ class CapitalGit < Sinatra::Base
     committer = { :email => putdata["committer"]["email"], :name => putdata["committer"]["name"], :time => Time.now }
     message = putdata["message"] || ""
 
-    repo = Rugged::Repository.new(@@repos[params[:repo]])
+    repo = Rugged::Repository.new(@@repos[params[:repo]][:path])
 
     options = {}
     updated_oid = repo.write(text.force_encoding("UTF-8"), :blob)
@@ -72,7 +72,12 @@ class CapitalGit < Sinatra::Base
     options[:parents] = repo.empty? ? [] : [ repo.head.target ].compact
     options[:update_ref] = 'HEAD'
 
-    Rugged::Commit.create(repo, options)
+    commit = Rugged::Commit.create(repo, options)
+
+    if !repo.bare?
+      repo.reset(commit, :hard)
+      repo.push("origin", [repo.head.name])
+    end
 
     return options.to_json
   end
