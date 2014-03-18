@@ -36,7 +36,6 @@ class CapitalGit < Sinatra::Base
 
   get '/:repo/*' do |repo, path|
     resp = {}
-    resp[:attributes] = {}
 
     @repo = @@repos[params[:repo]]
     repo = Rugged::Repository.new(@repo[:path])
@@ -45,7 +44,7 @@ class CapitalGit < Sinatra::Base
       if root[0,5] == @repo[:dir]
         if File.join(root, entry[:name]) == path
           blob = repo.read(entry[:oid])
-          resp[:attributes][:text] = blob.data.force_encoding('UTF-8')
+          resp[:value] = blob.data.force_encoding('UTF-8')
           resp[:entry] = entry
         end
       end
@@ -57,10 +56,14 @@ class CapitalGit < Sinatra::Base
   put '/:repo/*' do |repo, path|
     resp = {}
 
-    putdata = JSON.parse(request.env["rack.input"].read)
-    text = putdata["attributes"]["text"]
-    committer = { :email => putdata["committer"]["email"], :name => putdata["committer"]["name"], :time => Time.now }
-    message = putdata["message"] || ""
+    # putdata = JSON.parse(request.env["rack.input"].read)
+    text = params["value"]
+    committer = {
+      :email => params["commit_user_email"],
+      :name => params["commit_user_name"],
+      :time => Time.now }
+    message = params["commit_message"] || ""
+
 
     @repo = @@repos[params[:repo]]
     repo = Rugged::Repository.new(@repo[:path])
