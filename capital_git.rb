@@ -62,7 +62,8 @@ class CapitalGit < Sinatra::Base
     committer = { :email => putdata["committer"]["email"], :name => putdata["committer"]["name"], :time => Time.now }
     message = putdata["message"] || ""
 
-    repo = Rugged::Repository.new(@@repos[params[:repo]][:path])
+    @repo = @@repos[params[:repo]]
+    repo = Rugged::Repository.new(@repo[:path])
 
     options = {}
     updated_oid = repo.write(text.force_encoding("UTF-8"), :blob)
@@ -79,9 +80,25 @@ class CapitalGit < Sinatra::Base
 
     if !repo.bare?
       repo.reset(commit, :hard)
-      if repo.remotes.map {|r| r.name}.include? "origin"
-        repo.push("origin", [repo.head.name])
+
+
+      # TODO:
+      # stop using the shell command.
+      # until https://github.com/libgit2/rugged/pull/304 is merged
+      # can't push to a remote over ssh
+      # 
+      # test for what protocol the remote uses
+      # repo.remote.first.url
+      remote = repo.remotes.find {|r| r.name == "origin"}
+      # debugger  
+      if (remote && remote.url.include?("http"))
+        repo.push(remote.name, [repo.head.name])
+      else
+        Dir.chdir(File.join(@repo[:path],@repo[:dir])){
+          %x[git push origin]
+        }
       end
+
     end
 
     return options.to_json
