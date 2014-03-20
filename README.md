@@ -14,7 +14,9 @@ Can do three things.
 - `PUT /:repo-slug/path/to/file`
     Update and commit changes to a file.
 
-To start the app, copy and rename `config.ru.sample` and `repos.yml.sample` to `config.ru` and `repos.yml` respectively with the proper configuration.
+To start the app, copy and rename `repos.yml.sample` to `repos.yml` with the proper configuration.
+
+The `config.ru.sample` file has an example of how to run the app with a different base path.
 
 Then run:
 
