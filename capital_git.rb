@@ -1,31 +1,39 @@
 require 'sinatra/base'
 require 'yaml'
-if ENV['RACK_ENV'] == "development"
+if ENV['RACK_ENV'] == "development" || ENV['RACK_ENV'].nil?
   require 'byebug'
 end
 
 class CapitalGit < Sinatra::Base
 
+  @@env = ENV['RACK_ENV'] || 'development'
+  @@repos = {}
+  YAML::load(File.read(File.expand_path(File.join('config','repos.yml'), File.dirname(__FILE__))))[@@env].each do |repo|
+    @@repos[repo['slug']] = repo # {:path => repo['path'], :dir => repo['dir']}
+    @@repos[repo['slug']] = LocalRepository.new(repo)
+  end
+  
+  def self.env
+    @@env
+  end
+
+  def self.repos
+    @@repos
+  end
+
   before do
     content_type :json
-    env = ENV['RACK_ENV'] || 'development'
-    config_path = File.expand_path('repos.yml', File.dirname(__FILE__))
-    @@repos = {}
-    YAML::load(File.read(config_path))[env].each do |repo|
-      @@repos[repo['slug']] = {:path => repo['path'], :dir => repo['dir']}
-    end
   end
 
   get '/:repo' do
     resp = {}
     resp[:items] = []
 
-
     @repo = @@repos[params[:repo]]
-    repo = Rugged::Repository.new(@repo[:path])
+    repo = Rugged::Repository.new(@repo.local_path)
     
     repo.head.target.tree.walk_blobs do |root,entry|
-      if root[0,5] == @repo[:dir]
+      if root[0,5] == @repo.dir
         path = File.join(root, entry[:name])
         resp[:items] << {:entry => entry, :path => path}
       end
@@ -38,10 +46,10 @@ class CapitalGit < Sinatra::Base
     resp = {}
 
     @repo = @@repos[params[:repo]]
-    repo = Rugged::Repository.new(@repo[:path])
+    repo = Rugged::Repository.new(@repo.local_path)
 
     repo.head.target.tree.walk_blobs do |root,entry|
-      if root[0,5] == @repo[:dir]
+      if root[0,5] == @repo.dir
         if File.join(root, entry[:name]) == path
           blob = repo.read(entry[:oid])
           resp[:value] = blob.data.force_encoding('UTF-8')
@@ -66,7 +74,7 @@ class CapitalGit < Sinatra::Base
 
 
     @repo = @@repos[params[:repo]]
-    repo = Rugged::Repository.new(@repo[:path])
+    repo = Rugged::Repository.new(@repo.local_path)
 
     options = {}
     updated_oid = repo.write(text.force_encoding("UTF-8"), :blob)
@@ -87,8 +95,8 @@ class CapitalGit < Sinatra::Base
 
       # TODO:
       # stop using the shell command.
-      # until https://github.com/libgit2/rugged/pull/304 is merged
-      # can't push to a remote over ssh
+      # when https://github.com/libgit2/rugged/pull/304 is merged
+      # then can push to a remote over ssh
       # 
       # test for what protocol the remote uses
       # repo.remote.first.url
@@ -97,7 +105,7 @@ class CapitalGit < Sinatra::Base
       if (remote && remote.url.include?("http"))
         repo.push(remote.name, [repo.head.name])
       else
-        Dir.chdir(File.join(@repo[:path],@repo[:dir])){
+        Dir.chdir(File.join(@repo.local_path,@repo.dir)){
           %x[git push origin]
         }
       end

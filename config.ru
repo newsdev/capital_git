@@ -1,3 +1,3 @@
-require File.expand_path(File.join(*%w[ environment ]), File.dirname(__FILE__))
+require File.expand_path(File.join(*%w[ config environment ]), File.dirname(__FILE__))
 
 run CapitalGit

@@ -23,4 +23,4 @@ Then run:
 `shotgun -p 4567 config.ru`
 
 
-
+The `rake repos:clone` will clone repos into the `tmp/` directory which is where rugged will interact with them before pushing them back up.

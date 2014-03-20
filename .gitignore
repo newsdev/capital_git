@@ -1,4 +1,6 @@
 .DS_Store
 .ruby-gemset
 .ruby-version
-repos.yml
+config/repos.yml
+config/keys/*
+tmp/*

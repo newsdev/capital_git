@@ -1,0 +1,39 @@
+# Rename this file to repos.yml
+# and fill it out with the names and paths of repositories to serve.
+#
+
+{
+  "development": [
+    {
+      "slug": "remote-repo",
+      "path": "user@host.com:repo.git",
+      "dir": "data/",
+      "branch": "test",
+      "credentials": {
+        "username":"user",
+        "publickey":"key.pub",
+        "privatekey":"key"
+      }
+    },
+    {
+      "slug": "local-repo",
+      "path": "/Users/me/local-repo",
+      "dir": "data/",
+      "branch": "test"
+    }
+  ],
+  "staging": [
+    {
+      "slug": "repo",
+      "path": "/path/to/repo/repo.git",
+      "dir": "data/"
+    }
+  ],
+  "production": [
+    {
+      "slug": "repo",
+      "path": "/path/to/repo/repo.git",
+      "dir": "data/"
+    }
+  ]
+}
