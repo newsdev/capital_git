@@ -71,9 +71,32 @@ class LocalRepository
     Rugged::Repository.clone_at(remote_url, local_path, opts)
   end
 
-  # TODO: implement this
   def pull!
-    raise("Not implemented")
+    if !repository.nil?
+      remote = repository.remotes.find {|r| r.name == "origin"}
+      puts "Fetching #{remote.name} into #{local_path}"
+      opts = {}
+      opts[:credentials] = credentials if credentials
+      opts[:update_tips] = lambda do |ref, old_oid, new_oid|
+        puts 'update_tips'
+        puts ref
+        puts old_oid
+        puts new_oid
+        repository.reset(new_oid, :hard)
+      end
+      remote.fetch(opts)
+      # repository.fetch(remote)
+    end
+  end
+
+  def push!
+    if !repository.nil?
+      remote = repository.remotes.find {|r| r.name == "origin"}
+      puts "Pushing #{local_path} to #{remote.name}"
+      opts = {}
+      opts[:credentials] = credentials if credentials
+      remote.push([repository.head.name], opts)
+    end
   end
 
 end

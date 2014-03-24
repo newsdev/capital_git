@@ -1,7 +1,7 @@
 GIT
   remote: git://github.com/albertsun/rugged.git
-  revision: 5e740a4307d29772bacafa4da2cdefa8751ae8cd
-  branch: repository-clone-at-branch
+  revision: fb2f2613e3da7839a33d2f8683ea71696ed59b2c
+  branch: merge-304
   submodules: true
   specs:
     rugged (0.19.0)

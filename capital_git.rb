@@ -94,22 +94,10 @@ class CapitalGit < Sinatra::Base
 
 
       # TODO:
-      # stop using the shell command.
+      # pointing at the albertsun/rugged merge-304 branch so it works but is highly unstable
       # when https://github.com/libgit2/rugged/pull/304 is merged
-      # then can push to a remote over ssh
-      # 
-      # test for what protocol the remote uses
-      # repo.remote.first.url
-      remote = repo.remotes.find {|r| r.name == "origin"}
-      # debugger  
-      if (remote && remote.url.include?("http"))
-        repo.push(remote.name, [repo.head.name])
-      else
-        Dir.chdir(File.join(@repo.local_path,@repo.dir)){
-          %x[git push origin]
-        }
-      end
-
+      # then things will be better
+      @repo.push!
     end
 
     return options.to_json
