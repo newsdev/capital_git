@@ -72,9 +72,14 @@ class CapitalGit < Sinatra::Base
       :time => Time.now }
     message = params["commit_message"] || ""
 
-
     @repo = @@repos[params[:repo]]
     repo = Rugged::Repository.new(@repo.local_path)
+
+    if !path.start_with?(@repo.dir)
+      return error 403 do
+        "Access denied"
+      end
+    end
 
     options = {}
     updated_oid = repo.write(text.force_encoding("UTF-8"), :blob)
