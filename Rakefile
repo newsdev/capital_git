@@ -6,7 +6,7 @@ namespace :repos do
 
   desc "Does a `git pull` on all local repos."
   task :pull => :environment do
-    puts "#{CapitalGit.env} - pull repos"
+    puts "#{CapitalGit.env} - pulling repos"
     
     # TODO: need a way to check for the local repo's existence and clone if not
     CapitalGit.repos.each do |slug,repo|
@@ -16,7 +16,7 @@ namespace :repos do
 
   desc "Clones all remote repos in the repos.yml config file to the local tmp/ directory"
   task :clone => :environment do
-    puts "#{CapitalGit.env} - clone repos"
+    puts "#{CapitalGit.env} - cloning repos"
     
     CapitalGit.repos.each do |slug,repo|
       repo.clone!

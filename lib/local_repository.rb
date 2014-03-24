@@ -16,8 +16,8 @@ class LocalRepository
     @options["path"]
   end
 
-  def branch
-    @options["branch"] || nil
+  def checkout_branch
+    @options["checkout_branch"] || nil
   end
 
   def dir
@@ -63,10 +63,11 @@ class LocalRepository
     end
 
     opts = {}
-    opts[:branch] = branch if branch # TODO: doesn't seem to work https://github.com/libgit2/rugged/issues/336
+    opts[:checkout_branch] = checkout_branch if checkout_branch # TODO: doesn't seem to work https://github.com/libgit2/rugged/issues/336
     opts[:credentials] = credentials if credentials
 
-    puts "Cloning #{remote_url} into #{local_path}"
+    puts "Cloning #{remote_url} (#{checkout_branch}) into #{local_path}"
+    puts opts.inspect
     Rugged::Repository.clone_at(remote_url, local_path, opts)
   end
 

@@ -8,7 +8,7 @@
       "slug": "remote-repo",
       "path": "user@host.com:repo.git",
       "dir": "data/",
-      "branch": "test",
+      "checkout_branch": "test",
       "credentials": {
         "username":"user",
         "publickey":"key.pub",
@@ -19,7 +19,7 @@
       "slug": "local-repo",
       "path": "/Users/me/local-repo",
       "dir": "data/",
-      "branch": "test"
+      "checkout_branch": "test"
     }
   ],
   "staging": [
