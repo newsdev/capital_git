@@ -58,8 +58,7 @@ class LocalRepository
   def clone!
     if !repository.nil?
       puts "Repository at #{local_path} already exists"
-      pull!
-      return
+      return pull!
     end
 
     opts = {}
@@ -67,7 +66,6 @@ class LocalRepository
     opts[:credentials] = credentials if credentials
 
     puts "Cloning #{remote_url} (#{checkout_branch}) into #{local_path}"
-    puts opts.inspect
     Rugged::Repository.clone_at(remote_url, local_path, opts)
   end
 
@@ -78,14 +76,10 @@ class LocalRepository
       opts = {}
       opts[:credentials] = credentials if credentials
       opts[:update_tips] = lambda do |ref, old_oid, new_oid|
-        puts 'update_tips'
-        puts ref
-        puts old_oid
-        puts new_oid
+        puts "Updated #{ref} from #{old_oid} to #{new_oid}"
         repository.reset(new_oid, :hard)
       end
       remote.fetch(opts)
-      # repository.fetch(remote)
     end
   end
 
