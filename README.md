@@ -24,3 +24,17 @@ Then run:
 
 
 The `rake repos:clone` will clone repos into the `tmp/` directory which is where rugged will interact with them before pushing them back up.
+
+
+----
+
+Disclaimer
+==========
+
+This is very early pre-release software. Bugs, security holes and future major breaking changes abound. You probably shouldn't be using it yet.
+
+
+
+Copyright
+=========
+Copyright (c) 2014 The New York Times Company. See LICENSE for details.
