@@ -1,27 +1,32 @@
 class LocalRepository
 
-  def initialize options
-    @options = options
+  def initialize info, options=nil
+    @info = info
+    if !options.nil? && !options[:logger].blank?
+      @logger = Logger.new(options[:logger])
+    else
+      @logger = Logger.new(STDOUT)
+    end
   end
 
   def slug
-    @options["slug"]
+    @info["slug"]
   end
 
   def local_path
-    File.expand_path(File.join("..", "tmp", @options["slug"]), File.dirname(__FILE__))
+    File.expand_path(File.join("..", "tmp", @info["slug"]), File.dirname(__FILE__))
   end
 
   def remote_url
-    @options["path"]
+    @info["path"]
   end
 
   def checkout_branch
-    @options["checkout_branch"] || nil
+    @info["checkout_branch"] || nil
   end
 
   def dir
-    @options["dir"] || nil
+    @info["dir"] || nil
   end
 
   def repository
@@ -46,8 +51,8 @@ class LocalRepository
 
   def credentials
     if !@credentials
-      if @options["credentials"]
-        set_credentials(@options["credentials"])
+      if @info["credentials"]
+        set_credentials(@info["credentials"])
       else
         @credentials = nil
       end
@@ -56,27 +61,25 @@ class LocalRepository
   end
 
   def clone!
-    if !repository.nil?
-      puts "Repository at #{local_path} already exists"
-      return pull!
-    end
-
     opts = {}
-    opts[:checkout_branch] = checkout_branch if checkout_branch # TODO: doesn't seem to work https://github.com/libgit2/rugged/issues/336
+    opts[:checkout_branch] = checkout_branch if checkout_branch
     opts[:credentials] = credentials if credentials
 
-    puts "Cloning #{remote_url} (#{checkout_branch}) into #{local_path}"
+    @logger.info "Cloning #{remote_url} (#{checkout_branch}) into #{local_path}"
     Rugged::Repository.clone_at(remote_url, local_path, opts)
   end
 
   def pull!
-    if !repository.nil?
+    if repository.nil?
+      @logger.info "Repository at #{local_path} doesn't exist"
+      return clone!
+    else
       remote = repository.remotes.find {|r| r.name == "origin"}
-      puts "Fetching #{remote.name} into #{local_path}"
+      @logger.info "Fetching #{remote.name} into #{local_path}"
       opts = {}
       opts[:credentials] = credentials if credentials
       opts[:update_tips] = lambda do |ref, old_oid, new_oid|
-        puts "Updated #{ref} from #{old_oid} to #{new_oid}"
+        @logger.info "Updated #{ref} from #{old_oid} to #{new_oid}"
         repository.reset(new_oid, :hard)
       end
       remote.fetch(opts)
@@ -86,7 +89,7 @@ class LocalRepository
   def push!
     if !repository.nil?
       remote = repository.remotes.find {|r| r.name == "origin"}
-      puts "Pushing #{local_path} to #{remote.name}"
+      @logger.info "Pushing #{local_path} to #{remote.name}"
       opts = {}
       opts[:credentials] = credentials if credentials
       remote.push([repository.head.name], opts)

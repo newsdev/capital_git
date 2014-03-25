@@ -6,10 +6,14 @@ end
 
 class CapitalGit < Sinatra::Base
 
+  configure :production, :staging, :development do
+    enable :logging
+  end
+
   @@env = ENV['RACK_ENV'] || 'development'
   @@repos = {}
   YAML::load(File.read(File.expand_path(File.join('config','repos.yml'), File.dirname(__FILE__))))[@@env].each do |repo|
-    @@repos[repo['slug']] = repo # {:path => repo['path'], :dir => repo['dir']}
+    @@repos[repo['slug']] = repo
     @@repos[repo['slug']] = LocalRepository.new(repo)
   end
   
@@ -30,7 +34,8 @@ class CapitalGit < Sinatra::Base
     resp[:items] = []
 
     @repo = @@repos[params[:repo]]
-    repo = Rugged::Repository.new(@repo.local_path)
+    @repo.pull!
+    repo = @repo.repository
     
     repo.head.target.tree.walk_blobs do |root,entry|
       if root[0,5] == @repo.dir
@@ -46,7 +51,8 @@ class CapitalGit < Sinatra::Base
     resp = {}
 
     @repo = @@repos[params[:repo]]
-    repo = Rugged::Repository.new(@repo.local_path)
+    @repo.pull!
+    repo = @repo.repository
 
     repo.head.target.tree.walk_blobs do |root,entry|
       if root[0,5] == @repo.dir
@@ -96,7 +102,6 @@ class CapitalGit < Sinatra::Base
 
     if !repo.bare?
       repo.reset(commit, :hard)
-
 
       # TODO:
       # pointing at the albertsun/rugged merge-304 branch so it works but is highly unstable
