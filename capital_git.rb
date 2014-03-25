@@ -34,6 +34,9 @@ class CapitalGit < Sinatra::Base
     resp[:items] = []
 
     @repo = @@repos[params[:repo]]
+    if @repo.nil?
+      return error 404
+    end
     @repo.pull!
     repo = @repo.repository
     
@@ -51,6 +54,16 @@ class CapitalGit < Sinatra::Base
     resp = {}
 
     @repo = @@repos[params[:repo]]
+    if @repo.nil?
+      return error 404
+    end
+
+    if !path.start_with?(@repo.dir)
+      return error 404 do
+        "Not found"
+      end
+    end
+
     @repo.pull!
     repo = @repo.repository
 
@@ -79,6 +92,9 @@ class CapitalGit < Sinatra::Base
     message = params["commit_message"] || ""
 
     @repo = @@repos[params[:repo]]
+    if @repo.nil?
+      return error 404
+    end
     repo = Rugged::Repository.new(@repo.local_path)
 
     if !path.start_with?(@repo.dir)
