@@ -46,6 +46,16 @@ class CapitalGit < Sinatra::Base
         resp[:items] << {:entry => entry, :path => path}
       end
     end
+    walker = Rugged::Walker.new(repo)
+    walker.push(repo.head.target.oid)
+    walker.sorting(Rugged::SORT_DATE)
+    walker.push(repo.head.target)
+    resp[:commits] = walker.map do |commit|
+      {
+        :message => commit.message,
+        :author => commit.author
+      }
+    end.compact.first(10)
 
     return resp.to_json
   end
@@ -73,6 +83,20 @@ class CapitalGit < Sinatra::Base
           blob = repo.read(entry[:oid])
           resp[:value] = blob.data.force_encoding('UTF-8')
           resp[:entry] = entry
+          walker = Rugged::Walker.new(repo)
+          walker.push(repo.head.target.oid)
+          walker.sorting(Rugged::SORT_DATE)
+          walker.push(repo.head.target)
+          resp[:commits] = walker.map do |commit|
+            if commit.parents.size == 1 && commit.diff(paths: [path]).size > 0
+              {
+                :message => commit.message,
+                :author => commit.author
+              }
+            else
+              nil
+            end
+          end.compact.first(10)
         end
       end
     end
