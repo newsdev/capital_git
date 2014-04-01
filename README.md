@@ -37,4 +37,6 @@ This is very early pre-release software. Bugs, security holes and future major b
 
 Copyright
 =========
-Copyright (c) 2014 The New York Times Company. See LICENSE for details.
+MIT License.
+Copyright (c) 2014 The New York Times Company.
+See LICENSE for details.
