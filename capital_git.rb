@@ -107,7 +107,6 @@ class CapitalGit < Sinatra::Base
   put '/:repo/*' do |repo, path|
     resp = {}
 
-    # putdata = JSON.parse(request.env["rack.input"].read)
     text = params["value"]
     committer = {
       :email => params["commit_user_email"],

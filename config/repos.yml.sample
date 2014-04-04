@@ -12,7 +12,8 @@
       "credentials": {
         "username":"user",
         "publickey":"key.pub",
-        "privatekey":"key"
+        "privatekey":"key",
+        "passphrase": "phrase"
       }
     },
     {
