@@ -21,8 +21,6 @@ Can do three things.
 
 To start the app, copy and rename `repos.yml.sample` to `repos.yml` with the proper configuration.
 
-The `config.ru.sample` file has an example of how to run the app with a different base path.
-
 Then run:
 
 `shotgun -p 4567 config.ru`
