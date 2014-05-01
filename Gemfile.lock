@@ -1,7 +1,7 @@
 GIT
-  remote: git://github.com/albertsun/rugged.git
-  revision: b857b15f829af31d8f34c3bf08e9c516328c0e10
-  branch: merge-304
+  remote: git://github.com/libgit2/rugged.git
+  revision: de19d5fb25fc83c6b88fab0ef5cd1e09c829e0a8
+  branch: development
   submodules: true
   specs:
     rugged (0.19.0)
