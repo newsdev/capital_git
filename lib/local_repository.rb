@@ -22,7 +22,7 @@ class LocalRepository
   end
 
   def checkout_branch
-    @info["checkout_branch"] || nil
+    @info["checkout_branch"] || "master"
   end
 
   def dir
@@ -79,8 +79,10 @@ class LocalRepository
       opts = {}
       opts[:credentials] = credentials if credentials
       opts[:update_tips] = lambda do |ref, old_oid, new_oid|
-        @logger.info "Updated #{ref} from #{old_oid} to #{new_oid}"
-        repository.reset(new_oid, :hard)
+        if (ref.gsub("refs/remotes/#{remote.name}/","") == checkout_branch)
+          @logger.info "Updated #{ref} from #{old_oid} to #{new_oid}"
+          repository.reset(new_oid, :hard)
+        end
       end
       remote.fetch(opts)
     end
