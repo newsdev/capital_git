@@ -1,3 +1,10 @@
+require "bundler/gem_tasks"
+require "rspec/core/rake_task"
+
+RSpec::Core::RakeTask.new(:spec)
+
+task :default => :spec
+
 task :environment do
   require File.expand_path(File.join(*%w[ config environment ]), File.dirname(__FILE__))
 end
@@ -20,3 +27,4 @@ namespace :repos do
     end
   end
 end
+

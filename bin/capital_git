@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby
+
+begin
+  require 'rubygems'
+  require 'capital_git/web_app'
+rescue LoadError => e
+  require 'rubygems'
+  path = File.expand_path '../../lib', __FILE__
+  $:.unshift(path) if File.directory?(path) && !$:.include?(path)
+  require 'capital_git/web_app.rb'
+end
+
+
+puts "Hello, you're running your web app from a gem!"
+CapitalGit::WebApp.run!
