@@ -3,7 +3,6 @@ require 'yaml'
 if ENV['RACK_ENV'] == "development" || ENV['RACK_ENV'].nil?
   require 'byebug'
 end
-require 'capital_git/local_repository'
 
 module CapitalGit
   class WebApp < Sinatra::Base
@@ -14,10 +13,9 @@ module CapitalGit
 
     @@env = ENV['RACK_ENV'] || 'development'
     @@repos = {}
-    @@config_path = File.expand_path(ENV['CONFIG_PATH']) || File.expand_path(File.join('../../','config','repos.yml'), File.dirname(__FILE__))
-    puts @@config_path
+    @@config_path = File.expand_path( ENV['CONFIG_PATH'] || File.join('../../','config','repos.yml'), File.dirname(__FILE__) )
     YAML::load(File.read(@@config_path))[@@env].each do |repo|
-      @@repos[repo['slug']] = repo
+      # @@repos[repo['slug']] = repo
       @@repos[repo['slug']] = CapitalGit::LocalRepository.new(repo)
     end
     
