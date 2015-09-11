@@ -14,7 +14,9 @@ module CapitalGit
 
     @@env = ENV['RACK_ENV'] || 'development'
     @@repos = {}
-    YAML::load(File.read(File.expand_path(File.join('../../','config','repos.yml'), File.dirname(__FILE__))))[@@env].each do |repo|
+    @@config_path = File.expand_path(ENV['CONFIG_PATH']) || File.expand_path(File.join('../../','config','repos.yml'), File.dirname(__FILE__))
+    puts @@config_path
+    YAML::load(File.read(@@config_path))[@@env].each do |repo|
       @@repos[repo['slug']] = repo
       @@repos[repo['slug']] = CapitalGit::LocalRepository.new(repo)
     end

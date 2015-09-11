@@ -1,5 +1,9 @@
 #!/usr/bin/env ruby
 
+# path to a repos.yml file
+# with information on what git databases to load
+ENV['CONFIG_PATH'] = ARGV[0]
+
 begin
   require 'rubygems'
   require 'capital_git/web_app'
@@ -9,6 +13,7 @@ rescue LoadError => e
   $:.unshift(path) if File.directory?(path) && !$:.include?(path)
   require 'capital_git/web_app.rb'
 end
+
 
 
 puts "Hello, you're running your web app from a gem!"
