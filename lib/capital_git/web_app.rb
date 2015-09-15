@@ -1,5 +1,6 @@
 require 'sinatra/base'
 require 'yaml'
+require 'json'
 if ENV['RACK_ENV'] == "development" || ENV['RACK_ENV'].nil?
   require 'byebug'
 end
@@ -13,10 +14,18 @@ module CapitalGit
 
     @@env = ENV['RACK_ENV'] || 'development'
     @@repos = {}
+    @@databases = {}
     @@config_path = File.expand_path( ENV['CONFIG_PATH'] || File.join('../../','config','repos.yml'), File.dirname(__FILE__) )
     YAML::load(File.read(@@config_path))[@@env].each do |repo|
       # @@repos[repo['slug']] = repo
-      @@repos[repo['slug']] = CapitalGit::LocalRepository.new(repo)
+      # @@repos[repo['slug']] = CapitalGit::LocalRepository.new(repo)
+      if !@@databases.has_key?(repo['server'])
+        @@databases[repo['server']] = CapitalGit::Database.new(repo['server'])
+        if repo['credentials']
+          @@databases[repo['server']].credentials = repo['credentials']
+        end
+      end
+      @@repos[repo['name']] = CapitalGit::LocalRepository.new(@@databases[repo['server']], repo['name'])
     end
     
     def self.env
@@ -36,78 +45,68 @@ module CapitalGit
     end
 
     get '/:repo' do
-      resp = {}
-      resp[:items] = []
-
       @repo = @@repos[params[:repo]]
       if @repo.nil?
-        return error 404
+        status 404
+        return "Repo doesn't exist"
       end
-      @repo.pull!
-      repo = @repo.repository
-      
-      repo.head.target.tree.walk_blobs do |root,entry|
-        if root[0,5] == @repo.dir
-          path = File.join(root, entry[:name])
-          resp[:items] << {:entry => entry, :path => path}
-        end
-      end
-      walker = Rugged::Walker.new(repo)
-      walker.push(repo.head.target.oid)
-      walker.sorting(Rugged::SORT_DATE)
-      walker.push(repo.head.target)
-      resp[:commits] = walker.map do |commit|
-        {
-          :message => commit.message,
-          :author => commit.author
-        }
-      end.compact.first(10)
+
+      resp = {}
+      resp[:items] = @repo.list
+      resp[:commits] = @repo.log
+
+      puts resp.inspect
 
       return resp.to_json
     end
 
     get '/:repo/*' do |repo, path|
-      resp = {}
-
       @repo = @@repos[params[:repo]]
       if @repo.nil?
-        return error 404
+        status 404
+        return "Repo doesn't exist"
       end
 
-      if !path.start_with?(@repo.dir)
-        return error 404 do
-          "Not found"
-        end
+      if !path.start_with?(@repo.directory)
+        status 404
+        return "Not found"
       end
 
-      @repo.pull!
-      repo = @repo.repository
+      # resp = {}
+      resp = @repo.read(path)
 
-      repo.head.target.tree.walk_blobs do |root,entry|
-        if root[0,5] == @repo.dir
-          if File.join(root, entry[:name]) == path
-            blob = repo.read(entry[:oid])
-            resp[:value] = blob.data.force_encoding('UTF-8')
-            resp[:entry] = entry
-            walker = Rugged::Walker.new(repo)
-            walker.push(repo.head.target.oid)
-            walker.sorting(Rugged::SORT_DATE)
-            walker.push(repo.head.target)
-            resp[:commits] = walker.map do |commit|
-              if commit.parents.size == 1 && commit.diff(paths: [path]).size > 0
-                {
-                  :message => commit.message,
-                  :author => commit.author
-                }
-              else
-                nil
-              end
-            end.compact.first(10)
-          end
-        end
+      if resp.empty?
+        status 404
+        return "Not found"
       end
 
       return resp.to_json
+
+      # repo = @repo.repository
+
+      # repo.head.target.tree.walk_blobs do |root,entry|
+      #   if root[0,5] == @repo.directory
+      #     if File.join(root, entry[:name]) == path
+      #       blob = repo.read(entry[:oid])
+      #       resp[:value] = blob.data.force_encoding('UTF-8')
+      #       resp[:entry] = entry
+      #       walker = Rugged::Walker.new(repo)
+      #       walker.push(repo.head.target.oid)
+      #       walker.sorting(Rugged::SORT_DATE)
+      #       walker.push(repo.head.target)
+      #       resp[:commits] = walker.map do |commit|
+      #         if commit.parents.size == 1 && commit.diff(paths: [path]).size > 0
+      #           {
+      #             :message => commit.message,
+      #             :author => commit.author
+      #           }
+      #         else
+      #           nil
+      #         end
+      #       end.compact.first(10)
+      #     end
+      #   end
+      # end
     end
 
     put '/:repo/*' do |repo, path|
@@ -122,7 +121,8 @@ module CapitalGit
 
       @repo = @@repos[params[:repo]]
       if @repo.nil?
-        return error 404
+        status 404
+        return "Repo doesn't exist"
       end
       repo = Rugged::Repository.new(@repo.local_path)
 

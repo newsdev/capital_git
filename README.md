@@ -28,6 +28,48 @@ Then run:
 
 Running `rake repos:clone` clones repos into the `tmp/` directory and pull down the latest changes for any existing ones. This must be done before starting the server. Rugged interacts with its local clone of the repository and then pushes changes to `origin`.
 
+
+Gem Mode
+========
+
+Can also use `capital_git` as a gem to use git as a database within another app. Can't create a repo here.
+
+```
+
+@db = CapitalGit::RemoteServer.connect("git@server.example.com")
+
+@db.set_credentials(
+    :username => "git",
+    :publickey => '...',
+    :privatekey => '...',
+    :passphrase => "a passphrase goes here"
+)
+
+@db.config(
+    :committer => {
+        :email => "me@example.com",
+        :name => "Me at Work"
+    }
+)
+
+
+@db.repos
+
+@repo = @db.repos['repo-slug'] # this would correspond to git@servier.example.com:repo-slug.git
+
+# clones/pulls a local copy automatically
+
+@repo.all() # list of files
+
+@repo.read(...) # read a specific file's contents
+
+@repo.commit(...)
+
+
+```
+
+
+
 ----
 
 Disclaimer

@@ -16,6 +16,5 @@ rescue LoadError => e
 end
 
 
-
 puts "Hello, you're running your web app from a gem!"
 CapitalGit::WebApp.run!
