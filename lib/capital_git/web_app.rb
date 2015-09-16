@@ -75,7 +75,6 @@ module CapitalGit
         return "Not found"
       end
 
-      # resp = {}
       resp = @repo.read(path)
 
       if resp.empty?
@@ -84,32 +83,6 @@ module CapitalGit
       end
 
       return resp.to_json
-
-      # repo = @repo.repository
-
-      # repo.head.target.tree.walk_blobs do |root,entry|
-      #   if root[0,5] == @repo.directory
-      #     if File.join(root, entry[:name]) == path
-      #       blob = repo.read(entry[:oid])
-      #       resp[:value] = blob.data.force_encoding('UTF-8')
-      #       resp[:entry] = entry
-      #       walker = Rugged::Walker.new(repo)
-      #       walker.push(repo.head.target.oid)
-      #       walker.sorting(Rugged::SORT_DATE)
-      #       walker.push(repo.head.target)
-      #       resp[:commits] = walker.map do |commit|
-      #         if commit.parents.size == 1 && commit.diff(paths: [path]).size > 0
-      #           {
-      #             :message => commit.message,
-      #             :author => commit.author
-      #           }
-      #         else
-      #           nil
-      #         end
-      #       end.compact.first(10)
-      #     end
-      #   end
-      # end
     end
 
     put '/:repo/*' do |repo, path|
@@ -125,10 +98,7 @@ module CapitalGit
         return "Access denied"
       end
 
-      # debugger
       params = JSON.parse(request.body.read)
-      # puts params.inspect
-      # request.body.read
 
       author = {
         :email => params["commit_user_email"],
@@ -143,50 +113,37 @@ module CapitalGit
           }
         )
 
-      # repo = Rugged::Repository.new(@repo.local_path)
-
-      # options = {}
-      # updated_oid = repo.write(text.force_encoding("UTF-8"), :blob)
-      # tree = repo.head.target.tree
-
-      # options[:tree] = update_tree(repo, tree, path, updated_oid)
-      # options[:author] = committer
-      # options[:committer] = committer
-      # options[:message] ||= message
-      # options[:parents] = repo.empty? ? [] : [ repo.head.target ].compact
-      # options[:update_ref] = 'HEAD'
-
-      # commit = Rugged::Commit.create(repo, options)
-
-      # if !repo.bare?
-      #   repo.reset(commit, :hard)
-      #   @repo.push!
-      # end
-
       return resp.to_json
     end
 
-    # # recursively updates a tree.
-    # # returns the oid of the new tree
-    # def update_tree repo, tree, path, blob_oid
-    #   segments = path.split("/")
-    #   if segments.length > 1
-    #     segment = segments.shift
-    #     rest = segments.join("/")
-    #     builder = Rugged::Tree::Builder.new(tree)
-    #     original_tree = repo.lookup(builder[segment][:oid])
-    #     builder.remove(segment)
-    #     new_tree = update_tree(repo, original_tree, rest, blob_oid)
-    #     builder << { :type => :tree, :name => segment, :oid => new_tree, :filemode => 0040000 }
-    #     return builder.write(repo)
-    #   else
-    #     segment = segments.shift
-    #     builder = Rugged::Tree::Builder.new(tree)
-    #     builder.remove(segment)
-    #     builder << { :type => :blob, :name => segment, :oid => blob_oid, :filemode => 0100644 }
-    #     return builder.write(repo)
-    #   end
-    # end
+    delete '/:repo/*' do |repo, path|
+
+      @repo = @@repos[params[:repo]]
+      if @repo.nil?
+        status 404
+        return "Repo doesn't exist"
+      end
+
+      if !path.start_with?(@repo.directory)
+        status 403
+        return "Access denied"
+      end
+
+      author = {
+        :email => params["commit_user_email"],
+        :name => params["commit_user_name"],
+        :time => Time.now
+      }
+      commit_message = params["commit_message"] || "Delete via CapitalGit"
+
+      resp = @repo.delete(path, {
+            :author => author,
+            :message => commit_message
+          }
+        )
+
+      return resp.to_json
+    end
 
   end
 end
