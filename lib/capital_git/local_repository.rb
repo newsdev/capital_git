@@ -236,19 +236,32 @@ module CapitalGit
     # returns the oid of the new tree
     def update_tree repo, tree, path, blob_oid
       segments = path.split("/")
-      if segments.length > 1
-        segment = segments.shift
-        rest = segments.join("/")
+      segment = segments.shift
+      if tree
         builder = Rugged::Tree::Builder.new(repo, tree)
-        original_tree = repo.lookup(builder[segment][:oid])
-        builder.remove(segment)
-        new_tree = update_tree(repo, original_tree, rest, blob_oid)
-        builder << { :type => :tree, :name => segment, :oid => new_tree, :filemode => 0040000 }
-        return builder.write
       else
-        segment = segments.shift
-        builder = Rugged::Tree::Builder.new(repo, tree)
-        builder.remove(segment)
+        builder = Rugged::Tree::Builder.new(repo)
+      end
+      if segments.length > 0
+        rest = segments.join("/")
+        if builder[segment]
+          # puts '1', segment, rest
+          original_tree = repo.lookup(builder[segment][:oid])
+          builder.remove(segment)
+          new_tree = update_tree(repo, original_tree, rest, blob_oid)
+          builder << { :type => :tree, :name => segment, :oid => new_tree, :filemode => 0040000 }
+          return builder.write
+        else
+          # puts '2', segment, rest
+          new_tree = update_tree(repo, nil, rest, blob_oid)
+          builder << { :type => :tree, :name => segment, :oid => new_tree, :filemode => 0040000 }
+          return builder.write
+        end
+      else
+        # puts '3', segment
+        if builder[segment]
+          builder.remove(segment)
+        end
         builder << { :type => :blob, :name => segment, :oid => blob_oid, :filemode => 0100644 }
         return builder.write
       end
