@@ -62,6 +62,7 @@ module CapitalGit
         begin
           @repository = Rugged::Repository.new(local_path)
         rescue
+          @logger.error "Failed to create repository from #{local_path}"
           @repository = nil
         end
       end
@@ -161,13 +162,14 @@ module CapitalGit
       end.compact.first(limit)
     end
 
+    # TODO
+    # be able to specify separate refs to pull
     def read(key, options = nil)
       pull!
 
       resp = {}
 
       repository.head.target.tree.walk_blobs do |root,entry|
-        puts root[0,@directory.length]
         if (root.empty? && (entry[:name] == key)) or 
             ((root[0,@directory.length] == @directory) && (File.join(root, entry[:name]) == key))
           blob = repository.read(entry[:oid])
@@ -193,7 +195,33 @@ module CapitalGit
       resp
     end
 
-    def write(key, value, options = nil)
+    # TODO make it possible to commit to something other than HEAD
+    def write(key, value, options = {})
+      updated_oid = repository.write(value, :blob)
+      tree = repository.head.target.tree
+
+      commit_options = {}
+      commit_options[:tree] = update_tree(repository, tree, key, updated_oid)
+      commit_options[:author] = options[:author] || @db.committer # TODO: some sort of author instead
+      commit_options[:committer] = @db.committer
+      commit_options[:message] = options[:message] || ""
+      commit_options[:parents] = repository.empty? ? [] : [ repository.head.target ].compact
+      commit_options[:update_ref] = 'HEAD'
+
+      puts commit_options[:author]
+      puts commit_options[:committer]
+
+      # debugger
+
+      commit = Rugged::Commit.create(repository, commit_options)
+
+      if !repository.bare?
+        repository.reset(commit, :hard)
+        push!
+      end
+
+      # commit
+      repository.head.target.to_hash
     end
 
     def delete(key, options = nil)
@@ -202,6 +230,29 @@ module CapitalGit
     def clear(options = nil)
     end
 
+    private
+
+    # recursively updates a tree.
+    # returns the oid of the new tree
+    def update_tree repo, tree, path, blob_oid
+      segments = path.split("/")
+      if segments.length > 1
+        segment = segments.shift
+        rest = segments.join("/")
+        builder = Rugged::Tree::Builder.new(repo, tree)
+        original_tree = repo.lookup(builder[segment][:oid])
+        builder.remove(segment)
+        new_tree = update_tree(repo, original_tree, rest, blob_oid)
+        builder << { :type => :tree, :name => segment, :oid => new_tree, :filemode => 0040000 }
+        return builder.write
+      else
+        segment = segments.shift
+        builder = Rugged::Tree::Builder.new(repo, tree)
+        builder.remove(segment)
+        builder << { :type => :blob, :name => segment, :oid => blob_oid, :filemode => 0100644 }
+        return builder.write
+      end
+    end
 
   end
 end

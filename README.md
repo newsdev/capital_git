@@ -40,19 +40,17 @@ Can also use `capital_git` as a gem to use git as a database within another app.
 
 @db = CapitalGit::RemoteServer.connect("git@server.example.com")
 
-@db.set_credentials(
+@db.credentials = {
     :username => "git",
     :publickey => '...',
     :privatekey => '...',
     :passphrase => "a passphrase goes here"
-)
+}
 
-@db.config(
-    :committer => {
-        :email => "me@example.com",
-        :name => "Me at Work"
-    }
-)
+@db.committer = {
+    :email => "me@example.com",
+    :name => "Me at Work"
+}
 
 
 @db.repos

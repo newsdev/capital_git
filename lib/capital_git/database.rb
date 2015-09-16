@@ -22,10 +22,10 @@ module CapitalGit
     def credentials=(credential)
       # puts File.expand_path(File.join("../../config/keys", credential["privatekey"]), File.dirname(__FILE__))
       @credentials = Rugged::Credentials::SshKey.new({
-        :username => credential["username"],
-        :publickey => File.expand_path(File.join("../../config/keys", credential["publickey"]), File.dirname(__FILE__)),
-        :privatekey => File.expand_path(File.join("../../config/keys", credential["privatekey"]), File.dirname(__FILE__)),
-        :passphrase => credential["passphrase"] || nil
+        :username => credential[:username] || credential["username"],
+        :publickey => keypath(credential[:publickey] || credential["publickey"]),
+        :privatekey => keypath(credential[:privatekey] || credential["privatekey"]),
+        :passphrase => credential[:passphrase] || credential["passphrase"] || nil
       })
     end
     attr_reader :credentials
@@ -35,15 +35,29 @@ module CapitalGit
     # :email => "testuser@github.com",
     # :name => 'Test Author',
     # :time => Time.now
-    def committer=(val)
-      @committer = val
+    def committer=(committer_info)
+      @committer ||= {}
+      @committer[:email] = committer_info[:email] || committer_info["email"]
+      @committer[:name] = committer_info[:name] || committer_info["name"]
     end
-    attr_reader :committer
+    def committer
+      {
+        :email => @committer[:email],
+        :name => @committer[:name],
+        :time => Time.now
+      }
+    end
 
     def repositories
       @repositories
     end
     alias_method :repos, :repositories
+
+    private
+
+    def keypath name
+      File.expand_path(File.join("../../config/keys", name), File.dirname(__FILE__))
+    end
 
   end
 end
