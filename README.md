@@ -32,6 +32,8 @@ Running `rake repos:clone` clones repos into the `tmp/` directory and pull down 
 Gem Mode
 ========
 
+NOTE: THIS IS THEORETICAL. This isn't actually implemented yet, but is a rough sketch of what the goal is.
+
 Can also use `capital_git` as a gem to use git as a database within another app. Can't create a repo here.
 
 ```
