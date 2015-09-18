@@ -127,7 +127,7 @@ module CapitalGit
       end
     end
 
-    def list(options = {})
+    def list(options={})
       pull!
 
       items = []
@@ -141,7 +141,7 @@ module CapitalGit
       items
     end
 
-    def log(options = {})
+    def log(options={})
       limit = options[:limit] || 10
 
       pull!
@@ -164,7 +164,7 @@ module CapitalGit
 
     # TODO
     # be able to specify separate refs to pull
-    def read(key, options = nil)
+    def read(key, options={})
       pull!
 
       resp = {}
@@ -196,7 +196,7 @@ module CapitalGit
     end
 
     # TODO make it possible to commit to something other than HEAD
-    def write(key, value, options = {})
+    def write(key, value, options={})
       updated_oid = repository.write(value, :blob)
       tree = repository.head.target.tree
 
@@ -224,10 +224,12 @@ module CapitalGit
       repository.head.target.to_hash
     end
 
-    def delete(key, options = nil)
+    # delete a specific file
+    def delete(key, options={})
     end
 
-    def clear(options = nil)
+    # delete everything under a directory
+    def clear(key, options={})
     end
 
     private
@@ -247,7 +249,7 @@ module CapitalGit
         if builder[segment]
           # puts '1', segment, rest
           original_tree = repo.lookup(builder[segment][:oid])
-          builder.remove(segment)
+          builder.remove(segment) # Throws error instead of returning false, but that's a rugged bug
           new_tree = update_tree(repo, original_tree, rest, blob_oid)
           builder << { :type => :tree, :name => segment, :oid => new_tree, :filemode => 0040000 }
           return builder.write
@@ -260,7 +262,7 @@ module CapitalGit
       else
         # puts '3', segment
         if builder[segment]
-          builder.remove(segment)
+          builder.remove(segment) # Throws error instead of returning false, but that's a rugged bug
         end
         builder << { :type => :blob, :name => segment, :oid => blob_oid, :filemode => 0100644 }
         return builder.write

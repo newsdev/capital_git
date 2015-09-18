@@ -34,6 +34,8 @@ Gem Mode
 
 NOTE: THIS IS THEORETICAL. This isn't actually implemented yet, but is a rough sketch of what the goal is.
 
+TODO: write some tests to accompany these docs.
+
 Can also use `capital_git` as a gem to use git as a database within another app. Can't create a repo here.
 
 ```
