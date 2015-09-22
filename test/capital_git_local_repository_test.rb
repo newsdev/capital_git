@@ -65,3 +65,45 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
     FileUtils.remove_entry_secure(@tmp_path)
   end
 end
+
+
+class CapitalGitLocalRepositoryWriteTest < Minitest::Test
+
+  def setup
+    @tmp_path = Dir.mktmpdir("capital-git-test-repos") # will have the bare fixture repo
+    @tmp_path2 = Dir.mktmpdir("capital-git-test-repos") # will have the clone of the bare fixture repo
+   
+    @bare_repo = Rugged::Repository.clone_at(
+          File.join(File.expand_path("fixtures", File.dirname(__FILE__)), "testrepo.git"),
+          File.join(@tmp_path, "bare-testrepo.git"),
+          :bare => true
+        )
+    @database = CapitalGit::Database.new(@tmp_path, {:local_path => @tmp_path2})
+    @database.committer = {"email"=>"albert.sun@nytimes.com", "name"=>"albert_capital_git dev"}
+    @repo = @database.connect("bare-testrepo")
+  end
+
+  def test_write
+    @repo.write("test-create-new-file","b", :message => "test_write")
+    assert_equal "b", @repo.read("test-create-new-file")[:value], "Write to new file"
+
+    @repo.write("README", "fancy fancy", :message => "Update readme")
+    assert_equal "fancy fancy", @repo.read("README")[:value], "Write to existing file"
+
+    # TODO: test that it pushed
+    # and that commit info is correct
+  end
+
+  def test_delete
+    @repo.write("d","hello world", :message => "test_write")
+    assert_equal "hello world", @repo.read("d")[:value]
+    @repo.delete("d")
+    assert_nil @repo.read("d") # TOOD: is this the signature we want?
+  end
+
+  def teardown
+    FileUtils.remove_entry_secure(@tmp_path)
+    FileUtils.remove_entry_secure(@tmp_path2)
+  end
+end
+

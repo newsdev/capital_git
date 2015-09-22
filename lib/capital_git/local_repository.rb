@@ -82,6 +82,8 @@ module CapitalGit
 
     # TODO
     # be able to specify separate refs to pull
+    # 
+    # what to return when file doesn't exist?
     def read(key, options={})
       pull!
 
