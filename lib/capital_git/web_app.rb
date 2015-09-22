@@ -22,7 +22,8 @@ module CapitalGit
       if repo_config['committer']
         database.committer = repo_config['committer']
       end
-      CapitalGit::LocalRepository.new(database, repo_config['name'])
+
+      database.connect(repo_config['name'])
     end
 
     def repos name

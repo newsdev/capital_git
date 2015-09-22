@@ -4,20 +4,31 @@ module CapitalGit
     # object with
     # connection string
     # for example git@github.com
-    def initialize(connection_str)
+    def initialize(connection_str, options={})
       @connection_str = connection_str
-
-      # when you encounter an unseen before hash
-      # call a method to try and clone a new repo
-      @repositories = Hash.new do |hash,key|        
-        repo = CapitalGit::LocalRepository.new(self, key) # TODO: is this self the right instance of CapitalGit::Database ?
-
-        hash[key] = repo
-        repo
+      if @connection_str.include?("@") and @connection_str[-1] != ":"
+        @connection_str += ":"
+      elsif @connection_str[0] == "/" and @connection_str[-1] != "/"
+        @connection_str += "/"
       end
+
+      self.local_path = options[:local_path] ||
+                    File.expand_path(File.join("../..", "tmp"), File.dirname(__FILE__))
+      self.credentials = options[:credentials] if options[:credentials].is_a? Hash
+      self.credentials = options[:committer] if options[:committer].is_a? Hash
+
+      @repositories = {}
     end
 
     attr_reader :connection_str
+    attr_reader :repositories
+    alias_method :repos, :repositories
+
+    def connect name, options={}
+      @repositories[name] = CapitalGit::LocalRepository.new(self, name, options)
+      @repositories[name]
+    end
+
 
     def credentials=(credential)
       # puts File.expand_path(File.join("../../config/keys", credential["privatekey"]), File.dirname(__FILE__))
@@ -48,10 +59,11 @@ module CapitalGit
       }
     end
 
-    def repositories
-      @repositories
+    def local_path=(local_path)
+      FileUtils.mkdir_p(local_path)
+      @local_path = local_path
     end
-    alias_method :repos, :repositories
+    attr_reader :local_path
 
     private
 

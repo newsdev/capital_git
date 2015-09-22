@@ -1,7 +1,17 @@
 require "capital_git/version"
+require 'logger'
 
 module CapitalGit
-  # Your code goes here...
+
+  def self.logger
+    @logger ||= Logger.new(STDOUT)
+    @logger
+  end
+  def self.logger=(logger)
+    @logger = logger
+  end
+
+
 end
 
 require 'capital_git/database'

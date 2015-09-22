@@ -1,35 +1,22 @@
-require 'logger'
 require 'rugged'
 
 module CapitalGit
   class LocalRepository
 
-    # format of info
-    # {
-    #   "slug": "activity-trackers-roundup",
-    #   "path": "nytg@newsdev.ec2.nytimes.com:2014-02-12-activity-trackers-roundup.git",
-    #   "dir": "data/",
-    #   "checkout_branch": "develop",
-    #   "credentials": {
-    #     "username":"nytg",
-    #     "publickey":"capitalgit.pub",
-    #     "privatekey":"capitalgit",
-    #     "passphrase":"capitalgit"
-    #   }
-    # }
-
+    # database is a CapitalGit::Database
+    # name is the name of the git repo contained on that server
     def initialize database, name, options={}
       @db = database
       @name = name
       @directory = options["directory"] || ""
       @default_branch = options[:default_branch] || "master" # TODO: can we default to remote's default branch?
 
-
-      if options[:logger]
-        @logger = Logger.new(options[:logger])
-      else
-        @logger = Logger.new(STDOUT)
-      end
+      # if options[:logger]
+      #   @logger = Logger.new(options[:logger])
+      # else
+      #   @logger = Logger.new(STDOUT)
+      # end
+      @logger = CapitalGit.logger
 
       if repository.nil?
         @logger.info "Repository at #{local_path} doesn't exist"
@@ -37,32 +24,24 @@ module CapitalGit
       end
     end
 
-    attr_reader :name
+    attr_reader :name, :default_branch, :directory
     alias_method :slug, :name
 
     def local_path
-      File.expand_path(File.join("../..", "tmp", @name), File.dirname(__FILE__))
+      # File.expand_path(File.join("../..", "tmp", @name), File.dirname(__FILE__))
+      File.join(@db.local_path, @name)
     end
 
     def remote_url
-      "#{@db.connection_str}:#{@name}.git"
+      "#{@db.connection_str}#{@name}.git"
     end
-
-    # def default_branch
-    #   @default_branch
-    # end
-    attr_reader :default_branch, :directory
-
-    # def dir
-    #   @directory
-    # end
 
     def repository
       if @repository.nil?
         begin
           @repository = Rugged::Repository.new(local_path)
         rescue
-          @logger.error "Failed to create repository from #{local_path}"
+          @logger.info "Failed to create repository from #{local_path}"
           @repository = nil
         end
       end
@@ -208,8 +187,8 @@ module CapitalGit
       commit_options[:parents] = repository.empty? ? [] : [ repository.head.target ].compact
       commit_options[:update_ref] = 'HEAD'
 
-      puts commit_options[:author]
-      puts commit_options[:committer]
+      # puts commit_options[:author]
+      # puts commit_options[:committer]
 
       # debugger
 

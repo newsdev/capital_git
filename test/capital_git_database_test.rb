@@ -12,6 +12,10 @@ class CapitalGitDatabaseTest < Minitest::Test
     assert database.repositories.is_a? Hash
   end
 
+  def test_connection_str
+    
+  end
+
   def test_setting_credentials
     database = CapitalGit::Database.new("test")
     test_credentials = {
@@ -34,6 +38,14 @@ class CapitalGitDatabaseTest < Minitest::Test
     assert_equal database.committer[:email], test_committer["email"]
     assert_equal database.committer[:name], test_committer["name"]
     assert_in_delta database.committer[:time], Time.now
+  end
+
+  def test_setting_local_path
+    @tmp_path = Dir.mktmpdir("capital-git-test-repos")
+    database = CapitalGit::Database.new("test")
+    database.local_path = @tmp_path
+    assert_equal database.local_path, @tmp_path
+    assert Dir.exists? @tmp_path
   end
 
 end
