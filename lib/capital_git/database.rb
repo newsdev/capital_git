@@ -17,6 +17,7 @@ module CapitalGit
       self.credentials = options[:credentials] if options[:credentials].is_a? Hash
       self.credentials = options[:committer] if options[:committer].is_a? Hash
 
+      @committer = {}
       @repositories = {}
     end
 
@@ -47,7 +48,6 @@ module CapitalGit
     # :name => 'Test Author',
     # :time => Time.now
     def committer=(committer_info)
-      @committer ||= {}
       @committer[:email] = committer_info[:email] || committer_info["email"]
       @committer[:name] = committer_info[:name] || committer_info["name"]
     end
@@ -64,6 +64,14 @@ module CapitalGit
       @local_path = local_path
     end
     attr_reader :local_path
+
+
+    # TODO:
+    # when should this be called?
+    # does it need to do anything else other than delete the dir?
+    def cleanup
+      FileUtils.remove_entry_secure(local_path)
+    end
 
     private
 

@@ -11,11 +11,6 @@ module CapitalGit
       @directory = options["directory"] || ""
       @default_branch = options[:default_branch] || "master" # TODO: can we default to remote's default branch?
 
-      # if options[:logger]
-      #   @logger = Logger.new(options[:logger])
-      # else
-      #   @logger = Logger.new(STDOUT)
-      # end
       @logger = CapitalGit.logger
 
       if repository.nil?
@@ -48,34 +43,114 @@ module CapitalGit
       @repository
     end
 
-    # def set_credentials credential
-    #   @credentials = Rugged::Credentials::SshKey.new({
-    #     :username => credential["username"],
-    #     :publickey => File.expand_path(File.join("../config/keys", credential["publickey"]), File.dirname(__FILE__)),
-    #     :privatekey => File.expand_path(File.join("../config/keys", credential["privatekey"]), File.dirname(__FILE__)),
-    #     :passphrase => credential["passphrase"] || nil
-    #   })
-    # end
+    def list(options={})
+      pull!
 
-    # def credentials
-    #   if !@credentials
-    #     if @info["credentials"]
-    #       set_credentials(@info["credentials"])
-    #     else
-    #       @credentials = nil
-    #     end
-    #   end
-    #   @credentials
-    # end
+      items = []
+      repository.head.target.tree.walk_blobs do |root,entry|
+        if root[0,@directory.length] == @directory
+          if root.length > 0
+            path = File.join(root, entry[:name])
+          else
+            path = entry[:name]
+          end
+          items << {:entry => entry, :path => path}
+        end
+      end
 
-    def clone!
-      opts = {}
-      opts[:checkout_branch] = default_branch if default_branch
-      opts[:credentials] = @db.credentials if @db.credentials
-
-      @logger.info "Cloning #{remote_url} (#{default_branch}) into #{local_path}"
-      Rugged::Repository.clone_at(remote_url, local_path, opts)
+      items
     end
+
+    def log(options={})
+      limit = options[:limit] || 10
+
+      pull!
+
+      walker = Rugged::Walker.new(repository)
+      walker.push(repository.head.target.oid)
+      walker.sorting(Rugged::SORT_DATE)
+      walker.push(repository.head.target)
+      walker.map do |commit|
+        {
+          :message => commit.message,
+          :author => commit.author,
+          :time => commit.time,
+          :oid => commit.oid
+        }
+      end.compact.first(limit)
+    end
+
+    # TODO
+    # be able to specify separate refs to pull
+    def read(key, options={})
+      pull!
+
+      resp = {}
+
+      repository.head.target.tree.walk_blobs do |root,entry|
+        if (root.empty? && (entry[:name] == key)) or 
+            ((root[0,@directory.length] == @directory) && (File.join(root, entry[:name]) == key))
+          blob = repository.read(entry[:oid])
+          resp[:value] = blob.data.force_encoding('UTF-8')
+          resp[:entry] = entry
+          walker = Rugged::Walker.new(repository)
+          walker.push(repository.head.target.oid)
+          walker.sorting(Rugged::SORT_DATE)
+          walker.push(repository.head.target)
+          resp[:commits] = walker.map do |commit|
+            # if commit.parents.size == 1 && commit.diff(paths: [key]).size > 0
+            if commit.diff(paths: [key]).size > 0
+              {
+                :message => commit.message,
+                :author => commit.author
+              }
+            else
+              nil
+            end
+          end.compact.first(10)
+        end
+      end
+
+      resp
+    end
+
+    # TODO make it possible to commit to something other than HEAD
+    def write(key, value, options={})
+      updated_oid = repository.write(value, :blob)
+      tree = repository.head.target.tree
+
+      commit_options = {}
+      commit_options[:tree] = update_tree(repository, tree, key, updated_oid)
+      commit_options[:author] = options[:author] || @db.committer # TODO: some sort of author instead
+      commit_options[:committer] = @db.committer || options[:author]
+      commit_options[:message] = options[:message] || ""
+      commit_options[:parents] = repository.empty? ? [] : [ repository.head.target ].compact
+      commit_options[:update_ref] = 'HEAD'
+
+      # puts commit_options[:author]
+      # puts commit_options[:committer]
+
+      commit = Rugged::Commit.create(repository, commit_options)
+
+      if !repository.bare?
+        repository.reset(commit, :hard)
+        push!
+      end
+
+      repository.head.target.to_hash
+    end
+
+    # delete a specific file
+    def delete(key, options={})
+    end
+
+    # delete everything under a directory
+    def clear(key, options={})
+      raise "Not implemented"
+    end
+
+
+    # methods for interacting with remote
 
     def pull!
       if repository.nil?
@@ -106,112 +181,17 @@ module CapitalGit
       end
     end
 
-    def list(options={})
-      pull!
-
-      items = []
-      repository.head.target.tree.walk_blobs do |root,entry|
-        if root[0,@directory.length] == @directory
-          path = File.join(root, entry[:name])
-          items << {:entry => entry, :path => path}
-        end
-      end
-
-      items
-    end
-
-    def log(options={})
-      limit = options[:limit] || 10
-
-      pull!
-
-      walker = Rugged::Walker.new(repository)
-      walker.push(repository.head.target.oid)
-      walker.sorting(Rugged::SORT_DATE)
-      walker.push(repository.head.target)
-      walker.map do |commit|
-        {
-          :message => commit.message,
-          :author => commit.author,
-          :time => commit.time,
-          :oid => commit.oid
-          # :tree_id => commit.tree_id,
-        }
-        # commit.to_hash
-      end.compact.first(limit)
-    end
-
-    # TODO
-    # be able to specify separate refs to pull
-    def read(key, options={})
-      pull!
-
-      resp = {}
-
-      repository.head.target.tree.walk_blobs do |root,entry|
-        if (root.empty? && (entry[:name] == key)) or 
-            ((root[0,@directory.length] == @directory) && (File.join(root, entry[:name]) == key))
-          blob = repository.read(entry[:oid])
-          resp[:value] = blob.data.force_encoding('UTF-8')
-          resp[:entry] = entry
-          walker = Rugged::Walker.new(repository)
-          walker.push(repository.head.target.oid)
-          walker.sorting(Rugged::SORT_DATE)
-          walker.push(repository.head.target)
-          resp[:commits] = walker.map do |commit|
-            if commit.parents.size == 1 && commit.diff(paths: [key]).size > 0
-              {
-                :message => commit.message,
-                :author => commit.author
-              }
-            else
-              nil
-            end
-          end.compact.first(10)
-        end
-      end
-
-      resp
-    end
-
-    # TODO make it possible to commit to something other than HEAD
-    def write(key, value, options={})
-      updated_oid = repository.write(value, :blob)
-      tree = repository.head.target.tree
-
-      commit_options = {}
-      commit_options[:tree] = update_tree(repository, tree, key, updated_oid)
-      commit_options[:author] = options[:author] || @db.committer # TODO: some sort of author instead
-      commit_options[:committer] = @db.committer
-      commit_options[:message] = options[:message] || ""
-      commit_options[:parents] = repository.empty? ? [] : [ repository.head.target ].compact
-      commit_options[:update_ref] = 'HEAD'
-
-      # puts commit_options[:author]
-      # puts commit_options[:committer]
-
-      # debugger
-
-      commit = Rugged::Commit.create(repository, commit_options)
-
-      if !repository.bare?
-        repository.reset(commit, :hard)
-        push!
-      end
-
-      # commit
-      repository.head.target.to_hash
-    end
-
-    # delete a specific file
-    def delete(key, options={})
-    end
-
-    # delete everything under a directory
-    def clear(key, options={})
-    end
 
     private
+
+    def clone!
+      opts = {}
+      opts[:checkout_branch] = default_branch if default_branch
+      opts[:credentials] = @db.credentials if @db.credentials
+
+      @logger.info "Cloning #{remote_url} (#{default_branch}) into #{local_path}"
+      Rugged::Repository.clone_at(remote_url, local_path, opts)
+    end
 
     # recursively updates a tree.
     # returns the oid of the new tree

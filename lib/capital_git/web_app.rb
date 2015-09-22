@@ -12,9 +12,10 @@ module CapitalGit
     @@repos = {}
     @@config_path = File.expand_path( ENV['CONFIG_PATH'] || File.join('../../','config','repos.yml'), File.dirname(__FILE__) )
     @@config = YAML::load(File.read(@@config_path))[@@env].reduce({}) {|memo,r| memo[r["name"]] = r; memo;}
+    @@logger = CapitalGit.logger
 
     def self.load_repo repo_config
-      # puts "Loading #{repo_config}"
+      @@logger.debug "Loading #{repo_config}"
       database = CapitalGit::Database.new(repo_config['server'])
       if repo_config['credentials']
         database.credentials = repo_config['credentials']

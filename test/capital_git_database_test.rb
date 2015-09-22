@@ -13,7 +13,11 @@ class CapitalGitDatabaseTest < Minitest::Test
   end
 
   def test_connection_str
-    
+    d1 = CapitalGit::Database.new("/tmp/test")
+    assert_equal d1.connection_str, "/tmp/test/"
+
+    d2 = CapitalGit::Database.new("example@example.com")
+    assert_equal d2.connection_str, "example@example.com:"
   end
 
   def test_setting_credentials
@@ -40,12 +44,14 @@ class CapitalGitDatabaseTest < Minitest::Test
     assert_in_delta database.committer[:time], Time.now
   end
 
-  def test_setting_local_path
-    @tmp_path = Dir.mktmpdir("capital-git-test-repos")
+  def test_cleanup
     database = CapitalGit::Database.new("test")
+    @tmp_path = Dir.mktmpdir("capital-git-test-repos")
     database.local_path = @tmp_path
+    assert File.directory?(@tmp_path)
     assert_equal database.local_path, @tmp_path
-    assert Dir.exists? @tmp_path
+    database.cleanup
+    assert !File.directory?(@tmp_path)
   end
 
 end
