@@ -8,37 +8,31 @@ end
 module CapitalGit
   class WebApp < Sinatra::Base
 
+    @@env = ENV['RACK_ENV'] || 'development'
+    @@repos = {}
+    @@config_path = File.expand_path( ENV['CONFIG_PATH'] || File.join('../../','config','repos.yml'), File.dirname(__FILE__) )
+    @@config = YAML::load(File.read(@@config_path))[@@env].reduce({}) {|memo,r| memo[r["name"]] = r; memo;}
+
+    def self.load_repo repo_config
+      # puts "Loading #{repo_config}"
+      database = CapitalGit::Database.new(repo_config['server'])
+      if repo_config['credentials']
+        database.credentials = repo_config['credentials']
+      end
+      if repo_config['committer']
+        database.committer = repo_config['committer']
+      end
+      CapitalGit::LocalRepository.new(database, repo_config['name'])
+    end
+
+    def repos name
+      @@repos[name] ||= self.class.load_repo(@@config[name])
+    end
+
     configure :production, :staging, :development do
       enable :logging
     end
-
-    @@env = ENV['RACK_ENV'] || 'development'
-    @@repos = {}
-    @@databases = {}
-    @@config_path = File.expand_path( ENV['CONFIG_PATH'] || File.join('../../','config','repos.yml'), File.dirname(__FILE__) )
-    YAML::load(File.read(@@config_path))[@@env].each do |repo|
-      # @@repos[repo['slug']] = repo
-      # @@repos[repo['slug']] = CapitalGit::LocalRepository.new(repo)
-      if !@@databases.has_key?(repo['server'])
-        @@databases[repo['server']] = CapitalGit::Database.new(repo['server'])
-        if repo['credentials']
-          @@databases[repo['server']].credentials = repo['credentials']
-        end
-        if repo['committer']
-          @@databases[repo['server']].committer = repo['committer']
-        end
-      end
-      @@repos[repo['name']] = CapitalGit::LocalRepository.new(@@databases[repo['server']], repo['name'])
-    end
     
-    def self.env
-      @@env
-    end
-
-    def self.repos
-      @@repos
-    end
-
     before do
       content_type :json
     end
@@ -48,7 +42,7 @@ module CapitalGit
     end
 
     get '/:repo' do
-      @repo = @@repos[params[:repo]]
+      @repo = repos(params[:repo])
       if @repo.nil?
         status 404
         return "Repo doesn't exist"
@@ -58,13 +52,11 @@ module CapitalGit
       resp[:items] = @repo.list
       resp[:commits] = @repo.log
 
-      puts resp.inspect
-
       return resp.to_json
     end
 
     get '/:repo/*' do |repo, path|
-      @repo = @@repos[params[:repo]]
+      @repo = repos(params[:repo])
       if @repo.nil?
         status 404
         return "Repo doesn't exist"
@@ -87,7 +79,7 @@ module CapitalGit
 
     put '/:repo/*' do |repo, path|
 
-      @repo = @@repos[params[:repo]]
+      @repo = repos(params[:repo])
       if @repo.nil?
         status 404
         return "Repo doesn't exist"
@@ -118,7 +110,7 @@ module CapitalGit
 
     delete '/:repo/*' do |repo, path|
 
-      @repo = @@repos[params[:repo]]
+      @repo = repos(params[:repo])
       if @repo.nil?
         status 404
         return "Repo doesn't exist"

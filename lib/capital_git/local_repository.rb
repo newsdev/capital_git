@@ -249,7 +249,14 @@ module CapitalGit
         if builder[segment]
           # puts '1', segment, rest
           original_tree = repo.lookup(builder[segment][:oid])
-          builder.remove(segment) # Throws error instead of returning false, but that's a rugged bug
+          
+
+          # Throws error instead of returning false, but that's a rugged bug
+          # fixed in https://github.com/libgit2/rugged/pull/521
+          # can do this instead of explicitly testing for existence of segment
+          builder.remove(segment) 
+
+
           new_tree = update_tree(repo, original_tree, rest, blob_oid)
           builder << { :type => :tree, :name => segment, :oid => new_tree, :filemode => 0040000 }
           return builder.write
@@ -260,9 +267,9 @@ module CapitalGit
           return builder.write
         end
       else
-        # puts '3', segment
         if builder[segment]
           builder.remove(segment) # Throws error instead of returning false, but that's a rugged bug
+          # TODO: after https://github.com/libgit2/rugged/pull/521 is released, can remove conditional check
         end
         builder << { :type => :blob, :name => segment, :oid => blob_oid, :filemode => 0100644 }
         return builder.write
