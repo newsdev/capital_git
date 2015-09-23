@@ -14,7 +14,7 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
   def test_that_it_exists
     refute_nil @repo
     assert Dir.exists? @repo.local_path
-    assert @repo.repository.is_a? Rugged::Repository
+    assert_kind_of Rugged::Repository, @repo.repository
   end
 
   def test_paths
@@ -48,7 +48,7 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
 
     log_item = @repo.log.first
     assert_equal [:message, :author, :time, :oid], log_item.keys
-    assert log_item[:time].is_a? Time
+    assert_kind_of Time, log_item[:time]
   end
 
   def test_read
@@ -59,6 +59,8 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
     assert_equal 1, item[:commits].length
 
     assert_equal @repo.read("new.txt")[:commits].length, 1
+
+    assert_nil @repo.read("nonexistent.txt"), "Read returns nil when object doesn't exist"
   end
 
   def teardown
@@ -84,10 +86,10 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
   end
 
   def test_write
-    @repo.write("test-create-new-file","b", :message => "test_write")
+    assert @repo.write("test-create-new-file","b", :message => "test_write")
     assert_equal "b", @repo.read("test-create-new-file")[:value], "Write to new file"
 
-    @repo.write("README", "fancy fancy", :message => "Update readme")
+    assert @repo.write("README", "fancy fancy", :message => "Update readme")
     assert_equal "fancy fancy", @repo.read("README")[:value], "Write to existing file"
 
     # TODO: test that it pushed
@@ -95,10 +97,16 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
   end
 
   def test_delete
-    @repo.write("d","hello world", :message => "test_write")
+    @repo.write("d","hello world", :message => "test_delete write")
     assert_equal "hello world", @repo.read("d")[:value]
-    @repo.delete("d")
-    assert_nil @repo.read("d") # TOOD: is this the signature we want?
+
+    assert @repo.delete("d", :message => "test_delete"), "Delete returns true when successfully deleted"
+    assert_nil @repo.read("d"), "Read returns nil when object doesn't exist"
+    assert_equal false, @repo.delete("d", :message => "test_delete again"), "Delete returns false when object can't be deleted or doesn't exist"
+  end
+
+  def test_clear
+    skip("Not implemented and unclear if it should be implemented")
   end
 
   def teardown

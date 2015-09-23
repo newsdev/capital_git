@@ -113,10 +113,15 @@ module CapitalGit
         end
       end
 
-      resp
+      if resp.empty?
+        return nil
+      else
+        return resp
+      end
     end
 
     # TODO make it possible to commit to something other than HEAD
+    # TODO detect when nothing changed and don't commit if so
     def write(key, value, options={})
       updated_oid = repository.write(value, :blob)
       tree = repository.head.target.tree
@@ -129,21 +134,59 @@ module CapitalGit
       commit_options[:parents] = repository.empty? ? [] : [ repository.head.target ].compact
       commit_options[:update_ref] = 'HEAD'
 
-      # puts commit_options[:author]
-      # puts commit_options[:committer]
-
-      commit = Rugged::Commit.create(repository, commit_options)
+      commit_oid = Rugged::Commit.create(repository, commit_options)
 
       if !repository.bare?
-        repository.reset(commit, :hard)
+        repository.reset(commit_oid, :hard)
         push!
       end
 
-      repository.head.target.to_hash
+      # repository.head.target.to_hash
+      if repository.head.target.oid == commit_oid
+        return true
+      else
+        return false
+      end
     end
+
+    # TODO: refactor so delete and write share code
 
     # delete a specific file
     def delete(key, options={})
+      tree = repository.head.target.tree
+      original_oid = repository.head.target.oid
+
+      commit_options = {}
+      commit_options[:tree] = update_tree(repository, tree, key, nil)
+      commit_options[:author] = options[:author] || @db.committer # TODO: some sort of author instead
+      commit_options[:committer] = @db.committer || options[:author]
+      commit_options[:message] = options[:message] || ""
+      commit_options[:parents] = repository.empty? ? [] : [ repository.head.target ].compact
+      commit_options[:update_ref] = 'HEAD'
+
+      # if nothing changed, don't commit
+      if tree.oid == commit_options[:tree]
+        return false
+      end
+
+      commit_oid = Rugged::Commit.create(repository, commit_options)
+
+      if !repository.bare?
+        repository.reset(commit_oid, :hard)
+        push!
+      end
+
+      # puts original_oid
+      # puts commit_oid
+      # puts tree.oid
+      # puts commit_options[:tree]
+
+      # repository.head.target.to_hash
+      if repository.head.target.oid == commit_oid
+        return true
+      else
+        return false
+      end
     end
 
     # delete everything under a directory
@@ -197,6 +240,8 @@ module CapitalGit
 
     # recursively updates a tree.
     # returns the oid of the new tree
+    # blob_oid is either an object id to the file blob
+    # or if nil, that path is removed from the tree    
     def update_tree repo, tree, path, blob_oid
       segments = path.split("/")
       segment = segments.shift
@@ -217,7 +262,6 @@ module CapitalGit
           # can do this instead of explicitly testing for existence of segment
           builder.remove(segment) 
 
-
           new_tree = update_tree(repo, original_tree, rest, blob_oid)
           builder << { :type => :tree, :name => segment, :oid => new_tree, :filemode => 0040000 }
           return builder.write
@@ -232,7 +276,9 @@ module CapitalGit
           builder.remove(segment) # Throws error instead of returning false, but that's a rugged bug
           # TODO: after https://github.com/libgit2/rugged/pull/521 is released, can remove conditional check
         end
-        builder << { :type => :blob, :name => segment, :oid => blob_oid, :filemode => 0100644 }
+        if !blob_oid.nil?
+          builder << { :type => :blob, :name => segment, :oid => blob_oid, :filemode => 0100644 }
+        end
         return builder.write
       end
     end
