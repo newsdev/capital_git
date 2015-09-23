@@ -5,10 +5,8 @@
 {
   "development": [
     {
-      "slug": "remote-repo",
-      "path": "user@host.com:repo.git",
-      "dir": "data/",
-      "checkout_branch": "test",
+      "name": "repo"
+      "server": "user@example.com",
       "credentials": {
         "username":"user",
         "publickey":"key.pub",
@@ -17,24 +15,26 @@
       }
     },
     {
-      "slug": "local-repo",
-      "path": "/Users/me/local-repo",
-      "dir": "data/",
-      "checkout_branch": "test"
+      "name": "local-repo",
+      "server": "/Users/me/",
     }
   ],
   "staging": [
     {
-      "slug": "repo",
-      "path": "/path/to/repo/repo.git",
-      "dir": "data/"
+      "name": "remote-repo",
+      "server": "user@example.com"
     }
   ],
   "production": [
     {
-      "slug": "repo",
-      "path": "/path/to/repo/repo.git",
-      "dir": "data/"
+      "name": "remote-repo",
+      "server": "user@example.com",
+      "credentials": {
+        "username":"user",
+        "publickey":"key.pub",
+        "privatekey":"key",
+        "passphrase": "phrase"
+      }
     }
   ]
 }
