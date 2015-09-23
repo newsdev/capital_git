@@ -8,6 +8,7 @@ Gem::Specification.new do |spec|
   spec.version       = CapitalGit::VERSION
   spec.authors       = ["Albert Sun"]
   spec.email         = ["Albert.Sun@nytimes.com"]
+  spec.license       = "MIT"
 
   spec.summary       = %q{Talk to git like a database.}
   # spec.description   = %q{TODO: Write a longer description or delete this line.}

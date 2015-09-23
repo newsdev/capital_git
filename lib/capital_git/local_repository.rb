@@ -100,7 +100,6 @@ module CapitalGit
           walker.sorting(Rugged::SORT_DATE)
           walker.push(repository.head.target)
           resp[:commits] = walker.map do |commit|
-            # if commit.parents.size == 1 && commit.diff(paths: [key]).size > 0
             if commit.diff(paths: [key]).size > 0
               {
                 :message => commit.message,
@@ -120,11 +119,24 @@ module CapitalGit
       end
     end
 
+    # TODO:
+    # return a current snapshot of all files with no metadata or history
+    def read_current
+    end
+
     # TODO make it possible to commit to something other than HEAD
     # TODO detect when nothing changed and don't commit if so
     def write(key, value, options={})
       updated_oid = repository.write(value, :blob)
       tree = repository.head.target.tree
+
+      # author or committer look like
+      # {
+      #   :email => params["commit_user_email"],
+      #   :name => params["commit_user_name"],
+      #   :time => Time.now
+      # }
+      # with time optional
 
       commit_options = {}
       commit_options[:tree] = update_tree(repository, tree, key, updated_oid)

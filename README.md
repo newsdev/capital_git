@@ -1,7 +1,7 @@
 Capital Git
 -----------
 
-A simple REST interface through [Rugged](https://github.com/libgit2/rugged) for interacting with a bare git repo.
+A simple REST interface through [Rugged](https://github.com/libgit2/rugged) for interacting with a bare git repo. A Sinatra app run as a server with a `config.ru` rack file.
 
 Can do three things.
 
@@ -19,12 +19,7 @@ Can do three things.
     - `commit_user_name` User name for the commit
     - `commit_message` Commit message
 
-To start the app, copy and rename `repos.yml.sample` to `repos.yml` with the proper configuration.
-
-Then run:
-
-`shotgun -p 4567 config.ru`
-
+To run the app, provide a `repos.yml` config file modeled after `repos.yml.sample` to `repos.yml`.
 
 Running `rake repos:clone` clones repos into the `tmp/` directory and pull down the latest changes for any existing ones. This must be done before starting the server. Rugged interacts with its local clone of the repository and then pushes changes to `origin`.
 
@@ -32,44 +27,81 @@ Running `rake repos:clone` clones repos into the `tmp/` directory and pull down 
 Gem Mode
 ========
 
-NOTE: THIS IS THEORETICAL. This isn't actually implemented yet, but is a rough sketch of what the goal is.
-
-TODO: write some tests to accompany these docs.
-
 Can also use `capital_git` as a gem to use git as a database within another app. Can't create a repo here.
 
 ```
 
-@db = CapitalGit::RemoteServer.connect("git@server.example.com")
+# set up connection information
+@db = CapitalGit::Database.new("git@server.example.com")
 
+# optional configuration
 @db.credentials = {
-    :username => "git",
-    :publickey => '...',
-    :privatekey => '...',
-    :passphrase => "a passphrase goes here"
+  :username => "git",
+  :publickey => '...',
+  :privatekey => '...',
+  :passphrase => "a passphrase goes here"
 }
-
 @db.committer = {
-    :email => "me@example.com",
-    :name => "Me at Work"
+  :email => "me@example.com",
+  :name => "Me at Work"
 }
 
+# clones/pulls a local copy of git@server.example.com:repo-slug.git
+@repo = @db.connect('repo-slug')
 
-@db.repos
+# list files
+@repo.list
 
-@repo = @db.repos['repo-slug'] # this would correspond to git@servier.example.com:repo-slug.git
+# show commit log
+@repo.log
 
-# clones/pulls a local copy automatically
+# read a specific file
+item = @repo.read("path/to/file.txt")
 
-@repo.all() # list of files
+# string with file contents
+item[:value]
 
-@repo.read(...) # read a specific file's contents
-
-@repo.commit(...)
-
+# update a file, commit, and push
+@repo.write("path/to/file.txt", "new contents\nare here\n",
+      :message => "Write and commit"
+    )
 
 ```
 
+
+Installing the gem also provides a `capital_git` binary that can be run as a server.
+
+```
+capital_git /path/to/repos.yml
+```
+
+
+Development
+===========
+
+Have at it! Set everything up.
+
+```
+bundle install
+```
+
+Run the server.
+
+```
+shotgun -p 4567 config.ru
+```
+
+Test suite is written with Minitest. To run, simply.
+
+```
+rake
+```
+
+To build the gem.
+
+```
+gem build capital_git.gemspec
+```
 
 
 ----
