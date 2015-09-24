@@ -63,6 +63,33 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
     assert_nil @repo.read("nonexistent.txt"), "Read returns nil when object doesn't exist"
   end
 
+  def test_read_all
+    flat = [
+        {:path => "README", :value => "hey\n"},
+        {:path => "new.txt", :value => "new file\n"},
+        {:path => "subdir/README", :value => "hey\n"},
+        {:path => "subdir/new.txt", :value => "new file\n"},
+        {:path => "subdir/subdir2/README", :value => "hey\n"},
+        {:path => "subdir/subdir2/new.txt", :value => "new file\n"}
+      ]
+    tree = {
+        "README" => {:path => "README", :value => "hey\n"},
+        "new.txt" => {:path => "new.txt", :value => "new file\n"},
+        "subdir" => {
+          "README" => {:path => "subdir/README", :value => "hey\n"},
+          "new.txt" => {:path => "subdir/new.txt", :value => "new file\n"},
+          "subdir2" => {
+            "README" => {:path => "subdir/subdir2/README", :value => "hey\n"},
+            "new.txt" => {:path => "subdir/subdir2/new.txt", :value => "new file\n"}
+          }
+        }
+      }
+
+    assert_equal flat, @repo.read_all
+    assert_equal flat, @repo.read_all(:mode => :flat)
+    assert_equal tree, @repo.read_all(:mode => :tree)
+  end
+
   def teardown
     FileUtils.remove_entry_secure(@tmp_path)
   end
@@ -103,6 +130,14 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
     assert @repo.delete("d", :message => "test_delete"), "Delete returns true when successfully deleted"
     assert_nil @repo.read("d"), "Read returns nil when object doesn't exist"
     assert_equal false, @repo.delete("d", :message => "test_delete again"), "Delete returns false when object can't be deleted or doesn't exist"
+  end
+
+  def test_pull
+    skip("todo")
+  end
+
+  def test_push
+    skip("todo")
   end
 
   def test_clear

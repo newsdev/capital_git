@@ -20,6 +20,10 @@ class CapitalGitDatabaseTest < Minitest::Test
     assert_equal d2.connection_str, "example@example.com:"
   end
 
+  def test_connect
+    skip("todo")
+  end
+
   def test_setting_credentials
     database = CapitalGit::Database.new("test")
     test_credentials = {

@@ -119,13 +119,58 @@ module CapitalGit
       end
     end
 
-    # TODO:
     # return a current snapshot of all files with no metadata or history
-    def read_current
+    # :mode => :flat yields a flat array
+    # :mode => :tree yields a nested tree
+    def read_all options={:mode => :flat}
+      pull!
+
+      if options[:mode] == :tree
+        items = {}
+        repository.head.target.tree.walk(:preorder) do |root,entry|
+          if entry[:type] == :blob
+            blob = repository.read(entry[:oid])
+            if root.length > 0
+              path = File.join(root, entry[:name])
+
+              # if root = "subdir/subdir2/"
+              # then this bit does items["subdir"]["subdir2"][entry[:name]] = ...
+              path_keys = root.split("/")
+              path_keys.inject(items, :fetch)[entry[:name]] = {:path => path, :value => blob.data.force_encoding('UTF-8')}
+            else
+              path = entry[:name]
+              items[entry[:name]] = {:path => path, :value => blob.data.force_encoding('UTF-8')}
+            end
+          elsif entry[:type] == :tree
+            if root.length > 0
+              path_keys = root.split("/")
+              path_keys.inject(items, :fetch)[entry[:name]] = {}
+            else
+              items[entry[:name]] = {}
+            end
+          end
+        end
+        puts items
+      else
+        items = []
+        repository.head.target.tree.walk_blobs do |root,entry|
+          if root.length > 0
+            path = File.join(root, entry[:name])
+          else
+            path = entry[:name]
+          end
+          blob = repository.read(entry[:oid])
+          items << {:path => path, :value => blob.data.force_encoding('UTF-8')}
+        end
+      end
+
+      items
     end
 
     # TODO make it possible to commit to something other than HEAD
     # TODO detect when nothing changed and don't commit if so
+    # TODO how atomic can we make a write? so that it's not considered written
+    # until something has been pushed to the remote and persisted?
     def write(key, value, options={})
       updated_oid = repository.write(value, :blob)
       tree = repository.head.target.tree

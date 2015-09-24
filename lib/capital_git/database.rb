@@ -30,7 +30,9 @@ module CapitalGit
       @repositories[name]
     end
 
-
+    # TODO: other forms of credentials
+    # github key
+    # user/pass
     def credentials=(credential)
       # puts File.expand_path(File.join("../../config/keys", credential["privatekey"]), File.dirname(__FILE__))
       @credentials = Rugged::Credentials::SshKey.new({
