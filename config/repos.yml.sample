@@ -1,22 +1,40 @@
 # Rename this file to repos.yml
 # and fill it out with the names and paths of repositories to serve.
 #
+# Can have two types of entries.
+# Either specify `name` and `url` to add a named global repository to be served by the web-app.
+# Alternately, specify just `server` to set up connection info for a remote git server
+# when you don't know in advance which specific repositories will be used.
+#
 
 {
   "development": [
     {
       "name": "repo"
+      "url": "user@example.com:repo.git",
+      "credentials": {
+        "username":"user",
+        "publickey":"key.pub",
+        "privatekey":"key",
+        "passphrase": "phrase"
+      },
+      "committer": {
+        "email": "albert.sun@nytimes.com",
+        "name": "albert_capital_git.dev"
+      }
+    },
+    {
       "server": "user@example.com",
       "credentials": {
         "username":"user",
         "publickey":"key.pub",
         "privatekey":"key",
         "passphrase": "phrase"
+      },
+      "committer": {
+        "email": "albert.sun@nytimes.com",
+        "name": "albert_capital_git.dev"
       }
-    },
-    {
-      "name": "local-repo",
-      "server": "/Users/me/",
     }
   ],
   "staging": [

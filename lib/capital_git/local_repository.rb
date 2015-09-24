@@ -4,23 +4,26 @@ module CapitalGit
   class LocalRepository
 
     # database is a CapitalGit::Database
-    # name is the name of the git repo contained on that server
-    def initialize database, name, options={}
+    # url is the location of the remote git repo
+    def initialize database, url, options={}
       @db = database
-      @name = name
+      @url = url
       @directory = options["directory"] || ""
       @default_branch = options[:default_branch] || "master" # TODO: can we default to remote's default branch?
+
+      @name = parse_name_from_url(@url)
 
       @logger = CapitalGit.logger
 
       if repository.nil?
         @logger.info "Repository at #{local_path} doesn't exist"
         clone!
+      else
+        pull!
       end
     end
 
-    attr_reader :name, :default_branch, :directory
-    alias_method :slug, :name
+    attr_reader :name, :url, :default_branch, :directory
 
     def local_path
       # File.expand_path(File.join("../..", "tmp", @name), File.dirname(__FILE__))
@@ -28,7 +31,11 @@ module CapitalGit
     end
 
     def remote_url
-      "#{@db.connection_str}#{@name}.git"
+      @url
+    end
+
+    def database
+      @db
     end
 
     def repository
@@ -279,6 +286,16 @@ module CapitalGit
 
 
     private
+
+    def parse_name_from_url url
+      if url.include? ":"
+        name = url.split(":").last
+      else
+        parts = url.split("/")
+        name = parts.last
+      end
+      name.gsub(/\.git$/,"")
+    end
 
     def clone!
       opts = {}

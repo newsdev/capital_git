@@ -7,8 +7,8 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
   def setup
     @tmp_path = Dir.mktmpdir("capital-git-test-repos")
     @fixtures_path = File.expand_path("fixtures", File.dirname(__FILE__))
-    @database = CapitalGit::Database.new(@fixtures_path, {:local_path => @tmp_path})
-    @repo = @database.connect("testrepo")
+    @database = CapitalGit::Database.new({:local_path => @tmp_path})
+    @repo = @database.connect("#{@fixtures_path}/testrepo.git")
   end
 
   def test_that_it_exists
@@ -107,9 +107,9 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
           File.join(@tmp_path, "bare-testrepo.git"),
           :bare => true
         )
-    @database = CapitalGit::Database.new(@tmp_path, {:local_path => @tmp_path2})
+    @database = CapitalGit::Database.new({:local_path => @tmp_path2})
     @database.committer = {"email"=>"albert.sun@nytimes.com", "name"=>"albert_capital_git dev"}
-    @repo = @database.connect("bare-testrepo")
+    @repo = @database.connect("#{@tmp_path}/bare-testrepo.git")
   end
 
   def test_write

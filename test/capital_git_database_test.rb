@@ -6,41 +6,24 @@ class CapitalGitDatabaseTest < Minitest::Test
     refute_nil ::CapitalGit::Database
   end
 
-  def test_instance
-    database = CapitalGit::Database.new("test")
-    refute_nil database
-    assert database.repositories.is_a? Hash
+  def test_empty_instance
+    database = CapitalGit::Database.new
+    assert_kind_of CapitalGit::Database, database
+    assert_respond_to database, :connect
+    assert File.directory? database.local_path
   end
 
-  def test_connection_str
-    d1 = CapitalGit::Database.new("/tmp/test")
-    assert_equal d1.connection_str, "/tmp/test/"
-
-    d2 = CapitalGit::Database.new("example@example.com")
-    assert_equal d2.connection_str, "example@example.com:"
+  def test_server_str
+    d1 = CapitalGit::Database.new(:server => "git@example.com")
+    assert_equal d1.server, "git@example.com"
   end
 
   def test_connect
     skip("todo")
   end
 
-  def test_ssh_connect
-    database = CapitalGit::Database.new("git@github.com", :local_path => Dir.mktmpdir("capital-git-test-repos"))
-
-    database.credentials = {
-      :username => "git",
-      :publickey => File.expand_path("fixtures/keys/testcapitalgit.pub", File.dirname(__FILE__)),
-      :privatekey => File.expand_path("fixtures/keys/testcapitalgit", File.dirname(__FILE__)),
-      :passphrase => "capital_git passphrase"
-    }
-
-    assert_kind_of CapitalGit::LocalRepository, database.connect("newsdev/capital_git_testrepo")
-
-    database.cleanup
-  end
-
   def test_setting_credentials
-    database = CapitalGit::Database.new("test")
+    database = CapitalGit::Database.new
     database.credentials = {
       :username => "git",
       :publickey => File.expand_path("fixtures/keys/testcapitalgit.pub", File.dirname(__FILE__)),
@@ -51,7 +34,7 @@ class CapitalGitDatabaseTest < Minitest::Test
   end
 
   def test_setting_committer
-    database = CapitalGit::Database.new("test")
+    database = CapitalGit::Database.new
     test_committer = {
       "email" => "developer@example.com",
       "name" => "A Developer"
@@ -63,7 +46,7 @@ class CapitalGitDatabaseTest < Minitest::Test
   end
 
   def test_cleanup
-    database = CapitalGit::Database.new("test")
+    database = CapitalGit::Database.new
     @tmp_path = Dir.mktmpdir("capital-git-test-repos")
     database.local_path = @tmp_path
     assert File.directory?(@tmp_path)
@@ -73,3 +56,21 @@ class CapitalGitDatabaseTest < Minitest::Test
   end
 
 end
+
+class CapitalGitRemoteDatabaseTest < Minitest::Test
+  def test_ssh_connect
+    database = CapitalGit::Database.new(:server => "git@github.com", :local_path => Dir.mktmpdir("capital-git-test-repos"))
+
+    database.credentials = {
+      :username => "git",
+      :publickey => File.expand_path("fixtures/keys/testcapitalgit.pub", File.dirname(__FILE__)),
+      :privatekey => File.expand_path("fixtures/keys/testcapitalgit", File.dirname(__FILE__)),
+      :passphrase => "capital_git passphrase"
+    }
+
+    assert_kind_of CapitalGit::LocalRepository, database.connect("git@github.com:newsdev/capital_git_testrepo")
+
+    database.cleanup
+  end
+end
+

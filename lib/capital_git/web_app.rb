@@ -9,27 +9,9 @@ module CapitalGit
   class WebApp < Sinatra::Base
 
     @@env = ENV['RACK_ENV'] || 'development'
-    @@repos = {}
-    @@config_path = File.expand_path( ENV['CONFIG_PATH'] || File.join('../../','config','repos.yml'), File.dirname(__FILE__) )
-    @@config = YAML::load(File.read(@@config_path))[@@env].reduce({}) {|memo,r| memo[r["name"]] = r; memo;}
     @@logger = CapitalGit.logger
-
-    def self.load_repo repo_config
-      @@logger.debug "Loading #{repo_config}"
-      database = CapitalGit::Database.new(repo_config['server'])
-      if repo_config['credentials']
-        database.credentials = repo_config['credentials']
-      end
-      if repo_config['committer']
-        database.committer = repo_config['committer']
-      end
-
-      database.connect(repo_config['name'])
-    end
-
-    def repos name
-      @@repos[name] ||= self.class.load_repo(@@config[name])
-    end
+    @@config_path = File.expand_path( ENV['CONFIG_PATH'] || File.join('../../','config','repos.yml'), File.dirname(__FILE__) )
+    CapitalGit.load! @@config_path
 
     configure :production, :staging, :development do
       enable :logging
@@ -44,7 +26,7 @@ module CapitalGit
     end
 
     get '/:repo' do
-      @repo = repos(params[:repo])
+      @repo = CapitalGit.repository(params[:repo])
       if @repo.nil?
         status 404
         return "Repo doesn't exist"
@@ -58,7 +40,7 @@ module CapitalGit
     end
 
     get '/:repo/*' do |repo, path|
-      @repo = repos(params[:repo])
+      @repo = CapitalGit.repository(params[:repo])
       if @repo.nil?
         status 404
         return "Repo doesn't exist"
@@ -81,7 +63,7 @@ module CapitalGit
 
     put '/:repo/*' do |repo, path|
 
-      @repo = repos(params[:repo])
+      @repo = CapitalGit.repository(params[:repo])
       if @repo.nil?
         status 404
         return "Repo doesn't exist"
@@ -112,7 +94,7 @@ module CapitalGit
 
     delete '/:repo/*' do |repo, path|
 
-      @repo = repos(params[:repo])
+      @repo = CapitalGit.repository(params[:repo])
       if @repo.nil?
         status 404
         return "Repo doesn't exist"

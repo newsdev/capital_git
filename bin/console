@@ -9,6 +9,7 @@ require "capital_git"
 # (If you use this, don't forget to add pry to your Gemfile!)
 # require "pry"
 # Pry.start
+ENV["CAPITAL_GIT_ENV"] = "development"
 
 require "irb"
 IRB.start

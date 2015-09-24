@@ -15,9 +15,17 @@ class CapitalGitTest < Minitest::Test
     refute_nil ::CapitalGit::LocalRepository
   end
 
-  # def test_it_does_something_useful
-  #   assert false
-  # end
+  def test_test_env
+    assert_equal "test", CapitalGit.env_name
+  end
+
+  def test_config_methods_exist
+    assert_respond_to CapitalGit, :"load!"
+    assert_respond_to CapitalGit, :"load_config!"
+    assert_respond_to CapitalGit, :"cleanup!"
+    assert_respond_to CapitalGit, :"repository"
+    assert_respond_to CapitalGit, :"connect"
+  end
 
   def teardown
     # puts 'teardown'
