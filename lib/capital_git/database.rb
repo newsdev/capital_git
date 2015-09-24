@@ -13,6 +13,7 @@ module CapitalGit
       self.committer = options[:committer] if options[:committer].is_a? Hash
       self.server = options[:server] if options[:server]
 
+      @logger = CapitalGit.logger
     end
 
     attr_accessor :server
@@ -38,10 +39,13 @@ module CapitalGit
     # github key
     # user/pass
     def credentials=(credential)
+      publickey_path = keypath(credential[:publickey] || credential["publickey"])
+      privatekey_path = keypath(credential[:privatekey] || credential["privatekey"])
+      @logger.debug("Keys at #{publickey_path} and #{privatekey_path} and base at #{CapitalGit.base_keypath}")
       @credentials = Rugged::Credentials::SshKey.new({
         :username => credential[:username] || credential["username"], # TODO: this could be picked up from connection string
-        :publickey => keypath(credential[:publickey] || credential["publickey"]),
-        :privatekey => keypath(credential[:privatekey] || credential["privatekey"]),
+        :publickey => publickey_path,
+        :privatekey => privatekey_path,
         :passphrase => credential[:passphrase] || credential["passphrase"] || nil
       })
     end
@@ -75,14 +79,25 @@ module CapitalGit
 
     private
 
-    def keypath name
-      if !name.include?("/")
-        File.expand_path(File.join("../../config/keys", name), File.dirname(__FILE__))
-      elsif name[0] == "/"
-        name
+    def keypath path
+      @logger.debug("Looking for key #{path}")
+      if !path.include?("/")
+        File.expand_path(File.join("config/keys", path), CapitalGit.base_keypath)
+      elsif path[0] == "/"
+        path
       else
-        File.expand_path(name, File.dirname(__FILE__))
+        File.expand_path(path, CapitalGit.base_keypath)
       end
+      # if !name.include?("/")
+      #   File.expand_path(File.join("../../config/keys", name), File.dirname(__FILE__))
+      # elsif name[0] == "/"
+      #   name
+      # else
+      #   # better way of finding keys.
+      #   # ENV var?
+      #   # Rails.root?
+      #   # File.expand_path(name, File.dirname(__FILE__))
+      # end
     end
 
   end

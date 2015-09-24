@@ -17,6 +17,12 @@ module CapitalGit
     ENV["RACK_ENV"] || ENV["CAPITAL_GIT_ENV"] || raise("No environment defined")
   end
 
+  def self.base_keypath
+    return Rails.root if defined?(Rails) && Rails.respond_to?(:root)
+    return Sinatra::Base.root.to_s if defined?(Sinatra)
+    ENV["CAPITAL_GIT_KEYPATH"] || File.dirname(__FILE__)
+  end
+
   @@repositories = {}
   @@databases = {}
 
@@ -65,7 +71,8 @@ module CapitalGit
       end
     end
 
-    # otherwise, if a database from the config was not found
+    @logger.warn("Attempting to connect to a repository that's not defined in configuration.")
+
     database = CapitalGit::Database.new
     database.connect(url, options)
   end
