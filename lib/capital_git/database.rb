@@ -34,9 +34,8 @@ module CapitalGit
     # github key
     # user/pass
     def credentials=(credential)
-      # puts File.expand_path(File.join("../../config/keys", credential["privatekey"]), File.dirname(__FILE__))
       @credentials = Rugged::Credentials::SshKey.new({
-        :username => credential[:username] || credential["username"],
+        :username => credential[:username] || credential["username"], # TODO: this could be picked up from connection string
         :publickey => keypath(credential[:publickey] || credential["publickey"]),
         :privatekey => keypath(credential[:privatekey] || credential["privatekey"]),
         :passphrase => credential[:passphrase] || credential["passphrase"] || nil
@@ -78,7 +77,13 @@ module CapitalGit
     private
 
     def keypath name
-      File.expand_path(File.join("../../config/keys", name), File.dirname(__FILE__))
+      if !name.include?("/")
+        File.expand_path(File.join("../../config/keys", name), File.dirname(__FILE__))
+      elsif name[0] == "/"
+        name
+      else
+        File.expand_path(name, File.dirname(__FILE__))
+      end
     end
 
   end

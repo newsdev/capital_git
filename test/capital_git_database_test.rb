@@ -24,15 +24,29 @@ class CapitalGitDatabaseTest < Minitest::Test
     skip("todo")
   end
 
+  def test_ssh_connect
+    database = CapitalGit::Database.new("git@github.com", :local_path => Dir.mktmpdir("capital-git-test-repos"))
+
+    database.credentials = {
+      :username => "git",
+      :publickey => File.expand_path("fixtures/keys/testcapitalgit.pub", File.dirname(__FILE__)),
+      :privatekey => File.expand_path("fixtures/keys/testcapitalgit", File.dirname(__FILE__)),
+      :passphrase => "capital_git passphrase"
+    }
+
+    assert_kind_of CapitalGit::LocalRepository, database.connect("newsdev/capital_git_testrepo")
+
+    database.cleanup
+  end
+
   def test_setting_credentials
     database = CapitalGit::Database.new("test")
-    test_credentials = {
-      :username => "a_developer",
-      :publickey => "testcapitalgit.pub",
-      :privatekey => "testcapitalgit",
-      :passphrase => "this is a passphrase"
+    database.credentials = {
+      :username => "git",
+      :publickey => File.expand_path("fixtures/keys/testcapitalgit.pub", File.dirname(__FILE__)),
+      :privatekey => File.expand_path("fixtures/keys/testcapitalgit", File.dirname(__FILE__)),
+      :passphrase => "capital_git passphrase"
     }
-    database.credentials = test_credentials
     assert database.credentials.is_a? Rugged::Credentials::SshKey
   end
 

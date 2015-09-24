@@ -150,7 +150,6 @@ module CapitalGit
             end
           end
         end
-        puts items
       else
         items = []
         repository.head.target.tree.walk_blobs do |root,entry|
@@ -232,11 +231,6 @@ module CapitalGit
         repository.reset(commit_oid, :hard)
         push!
       end
-
-      # puts original_oid
-      # puts commit_oid
-      # puts tree.oid
-      # puts commit_options[:tree]
 
       # repository.head.target.to_hash
       if repository.head.target.oid == commit_oid
