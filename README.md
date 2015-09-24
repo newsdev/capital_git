@@ -27,12 +27,14 @@ Running `rake repos:clone` clones repos into the `tmp/` directory and pull down 
 Gem Mode
 ========
 
-Can also use `capital_git` as a gem to use git as a database within another app. Can't create a repo here.
+Can also use `capital_git` as a gem to use git as a database within another app.
+
+One caveat, you can't create new repositories via this gem.
 
 ```
 
 # set up connection information
-@db = CapitalGit::Database.new("git@server.example.com")
+@db = CapitalGit::Database.new
 
 # optional configuration
 @db.credentials = {
@@ -47,7 +49,7 @@ Can also use `capital_git` as a gem to use git as a database within another app.
 }
 
 # clones/pulls a local copy of git@server.example.com:repo-slug.git
-@repo = @db.connect('repo-slug')
+@repo = @db.connect('git@server.example.com:repo-slug.git')
 
 # list files
 @repo.list
@@ -66,6 +68,12 @@ item[:value]
       :message => "Write and commit"
     )
 
+```
+
+In Rails and Sinatra apps, configuration can be specified in a `config/capitalgit.yml` file. Look at the `config/repos.yml.sample` file here for guidance on syntax. Somewhere during app initialization you'll then need to include this.
+
+```
+CapitalGit.load!("config/capitalgit.yml")
 ```
 
 
