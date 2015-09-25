@@ -9,7 +9,7 @@ module CapitalGit
       @db = database
       @url = url
       @directory = options["directory"] || ""
-      @default_branch = options[:default_branch] || "master" # TODO: can we default to remote's default branch?
+      @default_branch = options[:default_branch] # TODO: can we default to remote's default branch?
 
       @name = parse_name_from_url(@url)
 
@@ -52,6 +52,8 @@ module CapitalGit
 
     def list(options={})
       pull!
+
+
 
       items = []
       repository.head.target.tree.walk_blobs do |root,entry|
@@ -260,30 +262,47 @@ module CapitalGit
         @logger.info "Repository at #{local_path} doesn't exist"
         return clone!
       else
-        remote = repository.remotes.find {|r| r.name == "origin"}
-        @logger.info "Fetching #{remote.name} into #{local_path}"
+        @logger.info "Fetching #{rugged_origin.name} into #{local_path}"
         opts = {}
         opts[:credentials] = @db.credentials if @db.credentials
         opts[:update_tips] = lambda do |ref, old_oid, new_oid|
-          if (ref.gsub("refs/remotes/#{remote.name}/","") == default_branch)
-            @logger.info "Updated #{ref} from #{old_oid} to #{new_oid}"
+          @logger.info "Fetched #{ref}"
+          if (ref.gsub("refs/remotes/#{rugged_origin.name}/","") == repository.head.name.gsub("refs/heads/",""))
+            @logger.info "Updated #{repository.head.name} from #{old_oid} to #{new_oid}"
             repository.reset(new_oid, :hard)
           end
         end
-        remote.fetch(opts)
+        rugged_origin.fetch(opts)
       end
     end
+
+    # TODO:
+    # how to push another branch?
+    # how does refs/heads/master know to become refs/remotes/origin/master ??
 
     def push!
       if !repository.nil?
-        remote = repository.remotes.find {|r| r.name == "origin"}
-        @logger.info "Pushing #{local_path} to #{remote.name}"
+        @logger.info "Pushing #{local_path} to #{rugged_origin.name}"
         opts = {}
         opts[:credentials] = @db.credentials if @db.credentials
-        remote.push([repository.head.name], opts)
+        rugged_origin.push([repository.head.name], opts)
       end
     end
 
+    # private
+
+    def rugged_origin
+      repository.remotes['origin']
+    end
+
+    def rugged_origin_refs
+      rugged_origin.ls.each {|ref| puts ref}
+    end
+
+    def rugged_references
+      # @repo.repository.references['refs/remotes/origin/packed']
+      repository.references
+    end
 
     private
 

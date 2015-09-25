@@ -105,6 +105,7 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
           File.join(@tmp_path, "bare-testrepo.git"),
           :bare => true
         )
+    # @bare_repo.head = "refs/heads/master"
     @database = CapitalGit::Database.new({:local_path => @tmp_path2})
     @database.committer = {"email"=>"albert.sun@nytimes.com", "name"=>"albert_capital_git dev"}
     @repo = @database.connect("#{@tmp_path}/bare-testrepo.git")
@@ -139,6 +140,10 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
     database2.committer = {"email"=>"second.committer@nytimes.com", "name"=>"second dev"}
     repo2 = database2.connect("#{@tmp_path}/bare-testrepo.git")
 
+    assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
+    assert_equal @bare_repo.head.target.oid, repo2.repository.head.target.oid
+    assert_equal @repo.repository.head.target.oid, repo2.repository.head.target.oid
+
     # this write should not be immediately seen by repo2
     @repo.write("test-create-new-file","b", :message => "test_write")
     assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
@@ -151,6 +156,8 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
     assert_equal @bare_repo.head.target.oid, repo2.repository.head.target.oid
     assert_equal @repo.repository.head.target.oid, repo2.repository.head.target.oid
     assert_equal @repo.read_all, repo2.read_all
+
+    database2.cleanup
   end
 
   def test_push
@@ -160,7 +167,84 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
 
   def test_clear
     skip("Not implemented and unclear if it should be implemented")
-    assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
+  end
+
+  def teardown
+    FileUtils.remove_entry_secure(@tmp_path)
+    FileUtils.remove_entry_secure(@tmp_path2)
+  end
+end
+
+class CapitalGitBranchesTest < Minitest::Test
+  def setup
+    @tmp_path = Dir.mktmpdir("capital-git-test-repos")
+    @fixtures_path = File.expand_path("fixtures", File.dirname(__FILE__))
+    @database = CapitalGit::Database.new({:local_path => @tmp_path})
+    @repo = @database.connect("#{@fixtures_path}/testrepo.git")
+  end
+
+  def test_list_another_branch
+    items = @repo.list(branch: "packed")
+    assert_equal 2, items.length, "2 items on branch 'packed'"
+
+    assert_equal "another.txt", items[0][:entry][:name]
+    assert_equal "second.txt", items[1][:entry][:name]
+  end
+
+  def test_log_another_branch
+    commits = @repo.log(branch: "packed")
+    assert_equal 2, commits.length, "2 commits on branch 'packed'"
+
+    assert_equal "packed commit two", commits[0][:message]
+    assert_equal "packed commit one", commits[1][:message]
+  end
+
+  def test_read_another_branch
+    file = @repo.read("another.txt", branch: "packed")
+    assert_equal :blob, file[:entry][:type]
+    assert_equal "yet another file", file[:value]
+    assert_equal "packed commit one", file[:commits][0][:message]
+  end
+
+  def test_read_all_another_branch
+    contents = @repo.read_all(branch: "packed")
+    assert_equal 2. contents.length
+    assert_equal ["another.txt", "second.txt"], contents.map {|c| c[:path]}
+    assert_equal ["yet another file", "what file?"], contents.map {|c| c[:value]}
+
+    contents = @repo.read_all(branch: "packed", mode: :tree)
+    assert_equal 2. contents.keys.length
+    assert_equal ["another.txt", "second.txt"], contents.keys
+    assert_equal ["yet another file", "what file?"], contents.values.map {|c| c[:value]}
+  end
+
+  def teardown
+    FileUtils.remove_entry_secure(@tmp_path)
+    FileUtils.remove_entry_secure(@tmp_path2)
+  end
+end
+
+class CapitalGitWriteBranchesTest < Minitest::Test
+  def setup
+    @tmp_path = Dir.mktmpdir("capital-git-test-repos") # will have the bare fixture repo
+    @tmp_path2 = Dir.mktmpdir("capital-git-test-repos") # will have the clone of the bare fixture repo
+   
+    @bare_repo = Rugged::Repository.clone_at(
+          File.join(File.expand_path("fixtures", File.dirname(__FILE__)), "testrepo.git"),
+          File.join(@tmp_path, "bare-testrepo.git"),
+          :bare => true
+        )
+    @database = CapitalGit::Database.new({:local_path => @tmp_path2})
+    @database.committer = {"email"=>"albert.sun@nytimes.com", "name"=>"albert_capital_git dev"}
+    @repo = @database.connect("#{@tmp_path}/bare-testrepo.git")
+  end
+
+  def test_write_on_another_branch
+    skip("TODO")
+  end
+
+  def test_delete_on_another_branch
+    skip("TODO")
   end
 
   def teardown
