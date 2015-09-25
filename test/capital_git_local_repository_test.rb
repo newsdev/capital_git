@@ -3,7 +3,6 @@ require 'tmpdir'
 require 'json'
 
 class CapitalGitLocalRepositoryTest < Minitest::Test
-
   def setup
     @tmp_path = Dir.mktmpdir("capital-git-test-repos")
     @fixtures_path = File.expand_path("fixtures", File.dirname(__FILE__))
@@ -97,7 +96,6 @@ end
 
 
 class CapitalGitLocalRepositoryWriteTest < Minitest::Test
-
   def setup
     @tmp_path = Dir.mktmpdir("capital-git-test-repos") # will have the bare fixture repo
     @tmp_path2 = Dir.mktmpdir("capital-git-test-repos") # will have the clone of the bare fixture repo
@@ -119,8 +117,9 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
     assert @repo.write("README", "fancy fancy", :message => "Update readme")
     assert_equal "fancy fancy", @repo.read("README")[:value], "Write to existing file"
 
-    # TODO: test that it pushed
-    # and that commit info is correct
+    # test that it pushed
+    # and that commit id's of the source and local copy match
+    assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
   end
 
   def test_delete
@@ -130,18 +129,38 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
     assert @repo.delete("d", :message => "test_delete"), "Delete returns true when successfully deleted"
     assert_nil @repo.read("d"), "Read returns nil when object doesn't exist"
     assert_equal false, @repo.delete("d", :message => "test_delete again"), "Delete returns false when object can't be deleted or doesn't exist"
+
+    assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
   end
 
   def test_pull
-    skip("todo")
+    tmp_path3 = Dir.mktmpdir("capital-git-test-repos")
+    database2 = CapitalGit::Database.new({:local_path => tmp_path3})
+    database2.committer = {"email"=>"second.committer@nytimes.com", "name"=>"second dev"}
+    repo2 = database2.connect("#{@tmp_path}/bare-testrepo.git")
+
+    # this write should not be immediately seen by repo2
+    @repo.write("test-create-new-file","b", :message => "test_write")
+    assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
+    refute_equal @bare_repo.head.target.oid, repo2.repository.head.target.oid
+    refute_equal @repo.repository.head.target.oid, repo2.repository.head.target.oid
+
+    # now bring repo2 up to date
+    repo2.pull!
+    assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
+    assert_equal @bare_repo.head.target.oid, repo2.repository.head.target.oid
+    assert_equal @repo.repository.head.target.oid, repo2.repository.head.target.oid
+    assert_equal @repo.read_all, repo2.read_all
   end
 
   def test_push
-    skip("todo")
+    @repo.write("test-create-new-file","b", :message => "test_write")
+    assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
   end
 
   def test_clear
     skip("Not implemented and unclear if it should be implemented")
+    assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
   end
 
   def teardown
@@ -149,4 +168,3 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
     FileUtils.remove_entry_secure(@tmp_path2)
   end
 end
-

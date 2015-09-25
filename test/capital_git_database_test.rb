@@ -19,7 +19,11 @@ class CapitalGitDatabaseTest < Minitest::Test
   end
 
   def test_connect
-    skip("todo")
+    tmp_path = Dir.mktmpdir("capital-git-test-repos")
+    fixtures_path = File.expand_path("fixtures", File.dirname(__FILE__))
+    database = CapitalGit::Database.new({:local_path => tmp_path})
+    repo = database.connect("#{fixtures_path}/testrepo.git")
+    assert_kind_of CapitalGit::LocalRepository, repo
   end
 
   def test_setting_credentials
