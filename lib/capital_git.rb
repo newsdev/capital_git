@@ -71,7 +71,7 @@ module CapitalGit
       end
     end
 
-    @logger.warn("Attempting to connect to a repository that's not defined in configuration.")
+    self.logger.warn("Attempting to connect to a repository that's not defined in configuration.")
 
     database = CapitalGit::Database.new
     database.connect(url, options)
