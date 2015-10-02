@@ -40,6 +40,14 @@ module CapitalGit
       @db
     end
 
+    def committer=(commiter_info)
+      @db.commiter = commiter_info
+    end
+    
+    def committer
+      @db.committer
+    end
+
     def repository
       if @repository.nil?
         begin
@@ -295,9 +303,14 @@ module CapitalGit
     def reference(options={})
       if options[:branch]
         ref = repository.references["refs/remotes/origin/#{options[:branch]}"]
+        # return ref
         if ref.is_a? Rugged::Reference
           return ref
         end
+
+        # TODO: should this return an error if the branch doesn't exist?
+        # instead of silently defaulting to head?
+
       end
       return repository.head
     end

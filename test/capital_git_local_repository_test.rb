@@ -218,6 +218,18 @@ class CapitalGitBranchesTest < Minitest::Test
     assert_equal ["yet another file\n", "what file?\n"], contents.values.map {|c| c[:value]}
   end
 
+  def test_default_to_head
+    item = @repo.read("README", branch: "nonexistent-branch")
+    assert_equal "hey\n", item[:value]
+    assert_equal [:value, :entry, :commits], item.keys
+    assert_equal({:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, item[:entry])
+    assert_equal 1, item[:commits].length
+
+    assert_equal @repo.read("new.txt")[:commits].length, 1
+
+    assert_nil @repo.read("nonexistent.txt"), "Read returns nil when object doesn't exist"
+  end
+
   def teardown
     FileUtils.remove_entry_secure(@tmp_path)
   end

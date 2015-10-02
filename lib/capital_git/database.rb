@@ -64,8 +64,8 @@ module CapitalGit
     end
     def committer
       {
-        :email => @committer[:email],
-        :name => @committer[:name],
+        :email => @committer[:email] || nil,
+        :name => @committer[:name] || nil,
         :time => Time.now
       }
     end
