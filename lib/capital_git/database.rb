@@ -8,6 +8,7 @@ module CapitalGit
       self.local_path = options[:local_path] ||
                     File.expand_path(File.join("../..", "tmp"), File.dirname(__FILE__))
       # TODO: this should default to something more unique
+      # use Dir.mktmpdir or something and make sure it works across platforms
 
       self.credentials = options[:credentials] if options[:credentials].is_a? Hash
       self.committer = options[:committer] if options[:committer].is_a? Hash

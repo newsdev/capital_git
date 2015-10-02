@@ -10,6 +10,8 @@ module CapitalGit
       @url = url
       @directory = options["directory"] || ""
       @default_branch = options[:default_branch] # TODO: can we default to remote's default branch?
+      # TODO: with adventure, specifying default branch doesn't actually seem to result in that being cloned
+
 
       @name = parse_name_from_url(@url)
 
@@ -53,10 +55,8 @@ module CapitalGit
     def list(options={})
       pull!
 
-
-
       items = []
-      repository.head.target.tree.walk_blobs do |root,entry|
+      reference(options).target.tree.walk_blobs do |root,entry|
         if root[0,@directory.length] == @directory
           if root.length > 0
             path = File.join(root, entry[:name])
@@ -76,9 +76,9 @@ module CapitalGit
       pull!
 
       walker = Rugged::Walker.new(repository)
-      walker.push(repository.head.target.oid)
+      walker.push(reference(options).target.oid)
       walker.sorting(Rugged::SORT_DATE)
-      walker.push(repository.head.target)
+      walker.push(reference(options).target)
       walker.map do |commit|
         {
           :message => commit.message,
@@ -89,25 +89,22 @@ module CapitalGit
       end.compact.first(limit)
     end
 
-    # TODO
-    # be able to specify separate refs to pull
-    # 
-    # what to return when file doesn't exist?
+    # read the contents of a file
     def read(key, options={})
       pull!
 
       resp = {}
 
-      repository.head.target.tree.walk_blobs do |root,entry|
+      reference(options).target.tree.walk_blobs do |root,entry|
         if (root.empty? && (entry[:name] == key)) or 
             ((root[0,@directory.length] == @directory) && (File.join(root, entry[:name]) == key))
           blob = repository.read(entry[:oid])
           resp[:value] = blob.data.force_encoding('UTF-8')
           resp[:entry] = entry
           walker = Rugged::Walker.new(repository)
-          walker.push(repository.head.target.oid)
+          walker.push(reference(options).target.oid)
           walker.sorting(Rugged::SORT_DATE)
-          walker.push(repository.head.target)
+          walker.push(reference(options).target)
           resp[:commits] = walker.map do |commit|
             if commit.diff(paths: [key]).size > 0
               {
@@ -136,7 +133,7 @@ module CapitalGit
 
       if options[:mode] == :tree
         items = {}
-        repository.head.target.tree.walk(:preorder) do |root,entry|
+        reference(options).target.tree.walk(:preorder) do |root,entry|
           if entry[:type] == :blob
             blob = repository.read(entry[:oid])
             if root.length > 0
@@ -161,7 +158,7 @@ module CapitalGit
         end
       else
         items = []
-        repository.head.target.tree.walk_blobs do |root,entry|
+        reference(options).target.tree.walk_blobs do |root,entry|
           if root.length > 0
             path = File.join(root, entry[:name])
           else
@@ -181,7 +178,7 @@ module CapitalGit
     # until something has been pushed to the remote and persisted?
     def write(key, value, options={})
       updated_oid = repository.write(value, :blob)
-      tree = repository.head.target.tree
+      tree = reference(options).target.tree
 
       # author or committer look like
       # {
@@ -196,7 +193,7 @@ module CapitalGit
       commit_options[:author] = options[:author] || @db.committer # TODO: some sort of author instead
       commit_options[:committer] = @db.committer || options[:author]
       commit_options[:message] = options[:message] || ""
-      commit_options[:parents] = repository.empty? ? [] : [ repository.head.target ].compact
+      commit_options[:parents] = repository.empty? ? [] : [ reference(options).target ].compact
       commit_options[:update_ref] = 'HEAD'
 
       commit_oid = Rugged::Commit.create(repository, commit_options)
@@ -206,8 +203,8 @@ module CapitalGit
         push!
       end
 
-      # repository.head.target.to_hash
-      if repository.head.target.oid == commit_oid
+      # reference(options).target.to_hash
+      if reference(options).target.oid == commit_oid
         return true
       else
         return false
@@ -218,15 +215,15 @@ module CapitalGit
 
     # delete a specific file
     def delete(key, options={})
-      tree = repository.head.target.tree
-      original_oid = repository.head.target.oid
+      tree = reference(options).target.tree
+      original_oid = reference(options).target.oid
 
       commit_options = {}
       commit_options[:tree] = update_tree(repository, tree, key, nil)
       commit_options[:author] = options[:author] || @db.committer # TODO: some sort of author instead
       commit_options[:committer] = @db.committer || options[:author]
       commit_options[:message] = options[:message] || ""
-      commit_options[:parents] = repository.empty? ? [] : [ repository.head.target ].compact
+      commit_options[:parents] = repository.empty? ? [] : [ reference(options).target ].compact
       commit_options[:update_ref] = 'HEAD'
 
       # if nothing changed, don't commit
@@ -241,8 +238,8 @@ module CapitalGit
         push!
       end
 
-      # repository.head.target.to_hash
-      if repository.head.target.oid == commit_oid
+      # reference(options).target.to_hash
+      if reference(options).target.oid == commit_oid
         return true
       else
         return false
@@ -256,6 +253,10 @@ module CapitalGit
 
 
     # methods for interacting with remote
+    # TODO:
+    # lots of things call pull!
+    # maybe too many
+    # should we find some way to de-dupe those pulls if they happen really close in time?
 
     def pull!
       if repository.nil?
@@ -289,20 +290,25 @@ module CapitalGit
       end
     end
 
-    # private
+    private
+
+    def reference(options={})
+      if options[:branch]
+        ref = repository.references["refs/remotes/origin/#{options[:branch]}"]
+        if ref.is_a? Rugged::Reference
+          return ref
+        end
+      end
+      return repository.head
+    end
 
     def rugged_origin
       repository.remotes['origin']
     end
 
-    def rugged_origin_refs
-      rugged_origin.ls.each {|ref| puts ref}
-    end
-
-    def rugged_references
-      # @repo.repository.references['refs/remotes/origin/packed']
-      repository.references
-    end
+    # def rugged_origin_refs
+    #   rugged_origin.ls.each {|ref| puts ref}
+    # end
 
     private
 

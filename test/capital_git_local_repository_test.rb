@@ -195,32 +195,31 @@ class CapitalGitBranchesTest < Minitest::Test
     commits = @repo.log(branch: "packed")
     assert_equal 2, commits.length, "2 commits on branch 'packed'"
 
-    assert_equal "packed commit two", commits[0][:message]
-    assert_equal "packed commit one", commits[1][:message]
+    assert_equal "packed commit two\n", commits[0][:message]
+    assert_equal "packed commit one\n", commits[1][:message]
   end
 
   def test_read_another_branch
     file = @repo.read("another.txt", branch: "packed")
     assert_equal :blob, file[:entry][:type]
-    assert_equal "yet another file", file[:value]
-    assert_equal "packed commit one", file[:commits][0][:message]
+    assert_equal "yet another file\n", file[:value]
+    assert_equal "packed commit one\n", file[:commits][0][:message]
   end
 
   def test_read_all_another_branch
     contents = @repo.read_all(branch: "packed")
-    assert_equal 2. contents.length
+    assert_equal 2, contents.length
     assert_equal ["another.txt", "second.txt"], contents.map {|c| c[:path]}
-    assert_equal ["yet another file", "what file?"], contents.map {|c| c[:value]}
+    assert_equal ["yet another file\n", "what file?\n"], contents.map {|c| c[:value]}
 
     contents = @repo.read_all(branch: "packed", mode: :tree)
-    assert_equal 2. contents.keys.length
+    assert_equal 2, contents.keys.length
     assert_equal ["another.txt", "second.txt"], contents.keys
-    assert_equal ["yet another file", "what file?"], contents.values.map {|c| c[:value]}
+    assert_equal ["yet another file\n", "what file?\n"], contents.values.map {|c| c[:value]}
   end
 
   def teardown
     FileUtils.remove_entry_secure(@tmp_path)
-    FileUtils.remove_entry_secure(@tmp_path2)
   end
 end
 
