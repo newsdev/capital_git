@@ -42,6 +42,10 @@ module CapitalGit
 
     config.each do |config_section|
       database = CapitalGit::Database.new
+      if config_section['local_path']
+        database.local_path = config_section['local_path']
+      end
+
       if config_section['credentials']
         database.credentials = config_section['credentials']
       end
@@ -64,7 +68,7 @@ module CapitalGit
     @@repositories[name]
   end
 
-  def self.connect url, options={}
+  def self.connect url, options={}, database_options={}
     @@databases.each do |servername, database|
       if url[0,servername.length] == servername
         return database.connect(url, options)
@@ -73,7 +77,7 @@ module CapitalGit
 
     self.logger.warn("Attempting to connect to a repository that's not defined in configuration.")
 
-    database = CapitalGit::Database.new
+    database = CapitalGit::Database.new(database_options)
     database.connect(url, options)
   end
 
