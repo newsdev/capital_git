@@ -5,6 +5,8 @@ module CapitalGit
     # connection string
     # for example git@github.com
     def initialize(options={})
+      @logger = CapitalGit.logger
+      
       self.local_path = options[:local_path] ||
                     File.expand_path(File.join("../..", "tmp"), File.dirname(__FILE__))
       # TODO: this should default to something more unique
@@ -13,8 +15,6 @@ module CapitalGit
       self.credentials = options[:credentials] if options[:credentials].is_a? Hash
       self.committer = options[:committer] if options[:committer].is_a? Hash
       self.server = options[:server] if options[:server]
-
-      @logger = CapitalGit.logger
     end
 
     attr_accessor :server
@@ -32,6 +32,7 @@ module CapitalGit
 
     def local_path=(local_path)
       FileUtils.mkdir_p(local_path)
+      @logger.debug("Setting database local_path to #{local_path}")
       @local_path = local_path
     end
     attr_reader :local_path

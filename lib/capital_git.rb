@@ -68,6 +68,8 @@ module CapitalGit
     @@repositories[name]
   end
 
+  # TODO: weird that database options here don't apply to
+  # already initialized databases
   def self.connect url, options={}, database_options={}
     @@databases.each do |servername, database|
       if url[0,servername.length] == servername
