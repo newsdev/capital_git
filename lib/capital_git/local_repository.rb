@@ -10,8 +10,6 @@ module CapitalGit
       @url = url
       @directory = options["directory"] || ""
       @default_branch = options[:default_branch] # TODO: can we default to remote's default branch?
-      # TODO: with adventure, specifying default branch doesn't actually seem to result in that being cloned
-
 
       @name = parse_name_from_url(@url)
 
@@ -43,7 +41,7 @@ module CapitalGit
     def committer=(commiter_info)
       @db.commiter = commiter_info
     end
-    
+
     def committer
       @db.committer
     end

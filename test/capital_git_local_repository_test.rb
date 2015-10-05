@@ -235,6 +235,38 @@ class CapitalGitBranchesTest < Minitest::Test
   end
 end
 
+
+
+# Create test case for cloning on one default branch
+# and then reading files from another branch
+
+class CapitalGitSwitchBranchesTest < Minitest::Test
+  def setup
+    @tmp_path = Dir.mktmpdir("capital-git-test-repos")
+    @fixtures_path = File.expand_path("fixtures", File.dirname(__FILE__))
+    @database = CapitalGit::Database.new({:local_path => @tmp_path})
+  end
+
+  def test_list_another_branch
+    repo1 = @database.connect("#{@fixtures_path}/testrepo.git", :default_branch => "master")
+    assert_equal 6, repo1.list(branch: "master").count, "6 items on default branch"
+
+    repo2 = @database.connect("#{@fixtures_path}/testrepo.git", :default_branch => "packed")
+
+    assert_equal repo1.local_path, repo2.local_path
+
+    items = repo2.list(branch: "packed")
+    assert_equal 2, items.length, "2 items on branch 'packed'"
+
+    assert_equal "another.txt", items[0][:entry][:name]
+    assert_equal "second.txt", items[1][:entry][:name]
+  end
+
+  def teardown
+    FileUtils.remove_entry_secure(@tmp_path)
+  end
+end
+
 class CapitalGitWriteBranchesTest < Minitest::Test
   def setup
     @tmp_path = Dir.mktmpdir("capital-git-test-repos") # will have the bare fixture repo
@@ -263,3 +295,6 @@ class CapitalGitWriteBranchesTest < Minitest::Test
     FileUtils.remove_entry_secure(@tmp_path2)
   end
 end
+
+
+
