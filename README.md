@@ -68,6 +68,9 @@ item[:value]
       :message => "Write and commit"
     )
 
+# each of these methods can take a :branch option to operate on a non-default branch
+@repo.list(branch: "some-branch")
+
 ```
 
 In Rails and Sinatra apps, configuration can be specified in a `config/capitalgit.yml` file. Look at the `config/repos.yml.sample` file here for guidance on syntax. Somewhere during app initialization you'll then need to include this.

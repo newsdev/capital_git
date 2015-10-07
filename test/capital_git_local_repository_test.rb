@@ -112,7 +112,7 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
   end
 
   def test_write
-    assert @repo.write("test-create-new-file","b", :message => "test_write")
+    assert @repo.write("test-create-new-file","b", :message => "test_write"), "write succeeds"
     assert_equal "b", @repo.read("test-create-new-file")[:value], "Write to new file"
 
     assert @repo.write("README", "fancy fancy", :message => "Update readme")
@@ -124,7 +124,7 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
   end
 
   def test_delete
-    @repo.write("d","hello world", :message => "test_delete write")
+    assert @repo.write("d","hello world", :message => "test_delete write")
     assert_equal "hello world", @repo.read("d")[:value]
 
     assert @repo.delete("d", :message => "test_delete"), "Delete returns true when successfully deleted"
@@ -132,6 +132,22 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
     assert_equal false, @repo.delete("d", :message => "test_delete again"), "Delete returns false when object can't be deleted or doesn't exist"
 
     assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
+  end
+
+  def test_empty_write
+    old_remote_oid = @bare_repo.head.target.oid
+    old_oid = @repo.repository.head.target.oid
+    refute @repo.write("README", @repo.read("README")[:value])
+    assert_equal old_oid, old_remote_oid
+    assert_equal old_oid, @repo.repository.head.target.oid
+  end
+
+  def test_empty_delete
+    old_remote_oid = @bare_repo.head.target.oid
+    old_oid = @repo.repository.head.target.oid
+    refute @repo.delete("nonexistent-file")
+    assert_equal old_oid, old_remote_oid
+    assert_equal old_oid, @repo.repository.head.target.oid
   end
 
   def test_pull
@@ -218,16 +234,11 @@ class CapitalGitBranchesTest < Minitest::Test
     assert_equal ["yet another file\n", "what file?\n"], contents.values.map {|c| c[:value]}
   end
 
-  def test_default_to_head
-    item = @repo.read("README", branch: "nonexistent-branch")
-    assert_equal "hey\n", item[:value]
-    assert_equal [:value, :entry, :commits], item.keys
-    assert_equal({:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, item[:entry])
-    assert_equal 1, item[:commits].length
-
-    assert_equal @repo.read("new.txt")[:commits].length, 1
-
-    assert_nil @repo.read("nonexistent.txt"), "Read returns nil when object doesn't exist"
+  def test_error_missing_branch
+    # assert_raises RuntimeError do
+    #   @repo.read("README", branch: "nonexistent-branch")
+    # end
+    assert_nil @repo.read("README", branch: "nonexistent-branch")
   end
 
   def teardown
@@ -277,17 +288,45 @@ class CapitalGitWriteBranchesTest < Minitest::Test
           File.join(@tmp_path, "bare-testrepo.git"),
           :bare => true
         )
+    @bare_repo.remotes['origin'].fetch("+refs/*:refs/*")
     @database = CapitalGit::Database.new({:local_path => @tmp_path2})
     @database.committer = {"email"=>"albert.sun@nytimes.com", "name"=>"albert_capital_git dev"}
-    @repo = @database.connect("#{@tmp_path}/bare-testrepo.git")
+    @repo = @database.connect("#{@tmp_path}/bare-testrepo.git", :default_branch => "master")
   end
 
-  def test_write_on_another_branch
-    skip("TODO")
+  def test_write_existing_branch
+    assert @repo.write("new-existing-branch.txt", "here it is", :branch => "packed", :message => "test_write_existing_branch"), "write succeeds"
+    assert_equal "here it is", @repo.read("new-existing-branch.txt", :branch => "packed")[:value], "Write to new file on existing branch"
+    assert_equal 3, @repo.list(branch: "packed").length, "One new item on branch 'packed'"
+    assert_nil @repo.read("new-existing-branch.txt"), "New file not on default branch"
+    assert_equal 6, @repo.list.length, "6 items on default branch"
+
+    assert_equal @bare_repo.references['refs/heads/packed'].target.oid, @repo.repository.references['refs/heads/packed'].target.oid, "ref pushed"
   end
 
-  def test_delete_on_another_branch
-    skip("TODO")
+  def test_write_on_a_new_branch
+    assert @repo.write("test-create-new-file", "b", :branch => "new-branch", :message => "test_write")
+    assert_equal "b", @repo.read("test-create-new-file", :branch => "new-branch")[:value], "Write to new file on new branch"
+    assert_equal 7, @repo.list(branch: "new-branch").length, "7 items on new branch"
+    assert_equal 6, @repo.list.length, "6 items on default branch"
+    assert_nil @repo.read("test-create-new-file"), "New file not on default branch"
+    assert_equal @bare_repo.references['refs/heads/new-branch'].target.oid, @repo.repository.references['refs/heads/new-branch'].target.oid, "ref pushed"
+  end
+
+  def test_delete_on_existing_branch
+    assert @repo.write("test-create-new-file", "b", :branch => "new-branch", :message => "test_write")
+    assert_equal 7, @repo.list(branch: "new-branch").length, "7 items on new branch after write"
+    old_oid = @bare_repo.references['refs/heads/new-branch'].target.oid
+    assert @repo.delete("test-create-new-file", :branch => "new-branch", :message => "test_delete")
+    assert_equal 6, @repo.list(branch: "new-branch").length, "6 items on new branch after delete"
+    refute_equal old_oid, @bare_repo.references['refs/heads/new-branch'].target.oid, "A commit was created"
+  end
+
+  def test_delete_on_new_branch
+    assert @repo.write("test-create-new-file", "b", :message => "test_write")
+    assert @repo.delete("test-create-new-file", :branch => "new-branch", :message => "test_delete")
+    assert_equal 7, @repo.list.length, "7 items on default branch after write and delete"
+    assert_equal 6, @repo.list(branch: "new-branch").length, "6 items on new branch after delete"
   end
 
   def teardown

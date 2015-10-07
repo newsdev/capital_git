@@ -24,6 +24,7 @@ class CapitalGitDatabaseTest < Minitest::Test
     database = CapitalGit::Database.new({:local_path => tmp_path})
     repo = database.connect("#{fixtures_path}/testrepo.git")
     assert_kind_of CapitalGit::LocalRepository, repo
+    FileUtils.remove_entry_secure(tmp_path)
   end
 
   def test_setting_credentials
