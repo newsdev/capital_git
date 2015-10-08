@@ -219,8 +219,6 @@ module CapitalGit
     # until something has been pushed to the remote and persisted?
     # TODO: maybe a :create_from option to specify which we are branching from?
     def write(key, value, options={})
-      pull!
-
       updated_oid = repository.write(value, :blob)
       index = repository.index
 
@@ -252,10 +250,42 @@ module CapitalGit
       return commit(ref, new_tree, options)
     end
 
+    # files is an array of
+    # {:path => "path/to/file", :value => "blob contents\nof file\n"}
+    def write_many(files, options={})
+      return false if files.length == 0
+      index = repository.index
+
+      if repository.empty?
+        new_branch = options[:branch] || "master"
+        ref = "refs/heads/#{new_branch}"
+      else
+        if options[:branch]
+          ref = reference(options[:branch])
+          if !ref
+            ref = repository.references.create("refs/heads/#{options[:branch]}", repository.head.target.oid)
+          end
+        else
+          ref = repository.head
+        end
+
+        tree = ref.target.tree
+        index.read_tree(tree)
+      end
+
+      files.each do |file|
+        updated_oid = repository.write(file[:value], :blob)
+        # index.read_tree(ref.target.tree)
+        index.update(:path => file[:path], :oid => updated_oid, :mode => 0100644)
+      end
+      new_tree = index.write_tree(repository)
+
+      return commit(ref, new_tree, options)
+    end
+
+
     # delete a specific file
     def delete(key, options={})
-      pull!
-
       return false if repository.empty?
 
       if options[:branch]

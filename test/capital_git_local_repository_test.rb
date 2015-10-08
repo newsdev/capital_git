@@ -123,6 +123,18 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
     assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
   end
 
+  def test_write_many
+    assert @repo.write_many([
+      {:path => "test-create-new-file", :value => "b"},
+      {:path => "README", :value => "write_many hello world\n"}
+      ], :message => "test_write"), "write_many on existing repo succeeds"
+    assert_equal "b", @repo.read("test-create-new-file")[:value], "write_many to new file succeeded"
+    assert_equal "write_many hello world\n", @repo.read("README")[:value], "write_many to existing file succeeded"
+    assert_equal 7, @repo.list.length
+
+    assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
+  end
+
   def test_delete
     assert @repo.write("d","hello world", :message => "test_delete write")
     assert_equal "hello world", @repo.read("d")[:value]
@@ -231,6 +243,21 @@ class CapitalGitEmptyRepositoryTest < Minitest::Test
     assert_equal 1, @repo.log.length
     assert_equal 1, @repo.list.length
 
+    assert_equal @empty_bare_repo.head.target.oid, @repo.repository.head.target.oid
+  end
+
+  def test_write_non_default_branch
+    skip("todo - implement this feature")
+    # assert @repo.write("test-create-new-file","b", :message => "test_write", :branch => "other-branch"), "write to other-branch succeeds"
+  end
+
+  def test_write_many
+    assert @repo.write_many([
+      {:path => "test-create-new-file", :value => "b"},
+      {:path => "README", :value => "hello world\n"}
+      ], :message => "test_write"), "write_many succeeds"
+    assert_equal 1, @repo.log.length
+    assert_equal 2, @repo.list.length
     assert_equal @empty_bare_repo.head.target.oid, @repo.repository.head.target.oid
   end
 
