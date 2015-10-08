@@ -191,6 +191,61 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
   end
 end
 
+
+class CapitalGitEmptyRepositoryTest < Minitest::Test
+  def setup
+    @tmp_path = Dir.mktmpdir("capital-git-test-repos") # will have the bare fixture repo
+    @tmp_path2 = Dir.mktmpdir("capital-git-test-repos") # will have the clone of the bare fixture repo
+   
+    @empty_bare_repo = Rugged::Repository.init_at(
+          File.join(@tmp_path, "empty-bare-testrepo.git"),
+          true # is_bare
+        )
+    @database = CapitalGit::Database.new({:local_path => @tmp_path2})
+    @database.committer = {"email"=>"albert.sun@nytimes.com", "name"=>"albert_capital_git dev"}
+    @repo = @database.connect("#{@tmp_path}/empty-bare-testrepo.git")
+  end
+
+  def test_list
+    assert_equal [], @repo.list, "Empty list"
+  end
+
+  def test_log
+    assert_equal [], @repo.log, "Empty commits"
+  end
+
+  def test_read
+    assert_nil @repo.read("README"), "File doesn't exist returns nil"
+  end
+
+  def test_read_all
+    assert_equal([], @repo.read_all, "No contents for read_all")
+    assert_equal([], @repo.read_all(:mode => :flat))
+    assert_equal({}, @repo.read_all(:mode => :tree))
+  end
+
+  def test_write
+    assert @repo.write("test-create-new-file","b", :message => "test_write"), "write succeeds"
+    assert_equal "b", @repo.read("test-create-new-file")[:value], "New file has correct contents"
+
+    assert_equal 1, @repo.log.length
+    assert_equal 1, @repo.list.length
+
+    assert_equal @empty_bare_repo.head.target.oid, @repo.repository.head.target.oid
+  end
+
+  def test_delete
+    refute @repo.delete("nonexistent")
+  end
+
+  def teardown
+    FileUtils.remove_entry_secure(@tmp_path)
+    FileUtils.remove_entry_secure(@tmp_path2)
+  end
+end
+
+
+
 class CapitalGitBranchesTest < Minitest::Test
   def setup
     @tmp_path = Dir.mktmpdir("capital-git-test-repos")

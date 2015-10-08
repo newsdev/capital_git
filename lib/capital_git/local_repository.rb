@@ -61,6 +61,8 @@ module CapitalGit
     def list(options={})
       pull!
 
+      return [] if repository.empty?
+
       if options[:branch]
         ref = reference(options[:branch])
       else
@@ -87,6 +89,8 @@ module CapitalGit
 
       pull!
 
+      return [] if repository.empty?
+
       if options[:branch]
         ref = reference(options[:branch])
       else
@@ -110,6 +114,8 @@ module CapitalGit
     # read the contents of a file
     def read(key, options={})
       pull!
+
+      return nil if repository.empty?
 
       if options[:branch]
         ref = reference(options[:branch])
@@ -155,6 +161,10 @@ module CapitalGit
     # :mode => :tree yields a nested tree
     def read_all options={:mode => :flat}
       pull!
+
+      if repository.empty?
+        return options[:mode] == :tree ? {} : []
+      end
 
       if options[:branch]
         ref = reference(options[:branch])
@@ -207,29 +217,35 @@ module CapitalGit
     # TODO detect when nothing changed and don't commit if so
     # TODO how atomic can we make a write? so that it's not considered written
     # until something has been pushed to the remote and persisted?
-
+    # TODO: maybe a :create_from option to specify which we are branching from?
     def write(key, value, options={})
-      # TODO: maybe a :create_from option to specify which we are branching from?
-      if options[:branch]
-        ref = reference(options[:branch])
-        if !ref
-          ref = repository.references.create("refs/heads/#{options[:branch]}", repository.head.target.oid)
-        end
-      else
-        ref = repository.head
-      end
-
-      tree = ref.target.tree
-      original_oid = ref.target.oid
+      pull!
 
       updated_oid = repository.write(value, :blob)
       index = repository.index
-      index.read_tree(ref.target.tree)
+
+      if repository.empty?
+        new_branch = options[:branch] || "master"
+        ref = "refs/heads/#{new_branch}"
+      else
+        if options[:branch]
+          ref = reference(options[:branch])
+          if !ref
+            ref = repository.references.create("refs/heads/#{options[:branch]}", repository.head.target.oid)
+          end
+        else
+          ref = repository.head
+        end
+
+        tree = ref.target.tree
+        index.read_tree(tree)
+      end
+
       index.update(:path => key, :oid => updated_oid, :mode => 0100644)
       new_tree = index.write_tree(repository)
 
       # if nothing changed, don't commit
-      if tree.oid == new_tree
+      if !repository.empty? && (tree.oid == new_tree)
         return false
       end
 
@@ -238,17 +254,23 @@ module CapitalGit
 
     # delete a specific file
     def delete(key, options={})
+      pull!
+
+      return false if repository.empty?
+
       if options[:branch]
         ref = reference(options[:branch])
         if !ref
           ref = repository.references.create("refs/heads/#{options[:branch]}", repository.head.target.oid)
         end
+      elsif repository.empty?
+        return false
       else
         ref = repository.head
       end
 
       tree = ref.target.tree
-      original_oid = ref.target.oid
+
       # new_tree = update_tree(repository, tree, key, nil)
       index = repository.index
       index.read_tree(ref.target.tree)
@@ -356,7 +378,11 @@ module CapitalGit
 
       commit_oid = Rugged::Commit.create(repository, commit_options)
 
-      ref = repository.references.update(ref, commit_oid)
+      if ref.is_a? Rugged::Reference
+        ref = repository.references.update(ref, commit_oid)
+      else
+        ref = repository.references.create(ref, commit_oid)
+      end
       if (!options[:branch]) || (options[:branch] == default_branch)
         repository.reset(commit_oid, :hard)
       end
