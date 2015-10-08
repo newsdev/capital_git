@@ -21,7 +21,8 @@
       "committer": {
         "email": "albert.sun@nytimes.com",
         "name": "albert_capital_git.dev"
-      }
+      },
+      "local_path": "/tmp/path-to-local-data"
     },
     {
       "server": "user@example.com",
