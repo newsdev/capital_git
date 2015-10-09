@@ -38,6 +38,11 @@ class CapitalGitDatabaseTest < Minitest::Test
     assert database.credentials.is_a? Rugged::Credentials::SshKey
   end
 
+  def test_empty_credentials
+    database = CapitalGit::Database.new
+    assert_nil database.credentials
+  end
+
   def test_setting_committer
     database = CapitalGit::Database.new
     test_committer = {

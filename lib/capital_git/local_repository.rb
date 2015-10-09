@@ -173,6 +173,10 @@ module CapitalGit
         ref = repository.head
       end
 
+      # TODO: replace this tree walking silliness with index.read_tree(ref.target.tree)
+      # and optionally index.add_all to pick up un-committed local changes to the repo
+      #     but to work-with uncommmitted... should probably change so we don't clone a local
+
       if options[:mode] == :tree
         items = {}
         ref.target.tree.walk(:preorder) do |root,entry|
@@ -427,6 +431,20 @@ module CapitalGit
         return false
       end
     end
+
+    # http://stackoverflow.com/questions/24493392/check-what-files-are-staged-in-git-with-rugged-ruby
+    # http://www.rubydoc.info/gems/rugged/Rugged/Repository#status-instance_method
+    # @repo.repository.status {|file, status_data| puts file}
+    # this outputs something for each changed file or untracked file. like `git status`
+
+    # http://www.rubydoc.info/gems/rugged/Rugged/Index#add_all-instance_method
+    # http://www.rubydoc.info/gems/rugged/Rugged/Index#update_all-instance_method
+    # index.add_all
+    # index.update_all
+    # @repo.repository.lookup(index['README'][:oid]).content
+    # this picks up changes, but doesn't seem to pick up new files
+
+
 
     #### leaving for reference
     #### no longer needed - using Rugged::Index methods instead

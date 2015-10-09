@@ -1,55 +1,35 @@
-Capital Git
+CapitalGit
 -----------
 
-A simple REST interface through [Rugged](https://github.com/libgit2/rugged) for interacting with a bare git repo. A Sinatra app run as a server with a `config.ru` rack file.
+Implementing revisions and workflows for text and written documents in a normal database kind of sucks. Git does it so well, why not use it for things we write in human language too? Unfortunately teaching most writers to work on the command line seems to be a non-starter, so let's build higher-level interfaces for them.
 
-Can do three things.
+CapitalGit provides a database adapter like interface into a remote git repository. It's a higher-level abstraction wrapping the [Rugged](https://github.com/libgit2/rugged) gem which itself wraps the [libgit2](http://github.com/libgit2/libgit2/) library.
 
-- `GET /:repo-slug`
-    List contents of a git repo or subfolder of that repo. Response in JSON format.
+Building a CMS shaped tool for a small number of users? Try plugging CapitalGit in instead of MongoDB or MySQL.
 
-- `GET /:repo-slug/path/to/file`
-    Return the contents of a file in that git repo wrapped in JSON.
-
-- `PUT /:repo-slug/path/to/file`
-    Update and commit changes to a file. Expects the following POST parameters:
-    
-    - `value` The new contents of the file.
-    - `commit_user_email` User email for the commit
-    - `commit_user_name` User name for the commit
-    - `commit_message` Commit message
-
-To run the app, provide a `repos.yml` config file modeled after `repos.yml.sample` to `repos.yml`.
-
-Running `rake repos:clone` clones repos into the `tmp/` directory and pull down the latest changes for any existing ones. This must be done before starting the server. Rugged interacts with its local clone of the repository and then pushes changes to `origin`.
+Or run the included Sinatra app in server mode to read and write from repositories over a REST interface. Just provide a configuration file to indicate which remote repositories can be edited.
 
 
 Gem Mode
 ========
 
-Can also use `capital_git` as a gem to use git as a database within another app.
-
-One caveat, you can't create new repositories via this gem.
+CapitalGit is installed much like any database. If you're using bundler, add this to your `Gemfile`
 
 ```
+gem 'capital_git', git: 'git@github.com:newsdev/capital_git.git', branch: 'master'
+```
 
-# set up connection information
-@db = CapitalGit::Database.new
+In Rails and Sinatra apps, configuration can be specified in a `config/capitalgit.yml` file. Look at the `config/repos.yml.sample` file here for guidance on syntax. Somewhere during app initialization (like in a `config/initializers/capital_git.rb` file) you'll then need to include this.
 
-# optional configuration
-@db.credentials = {
-  :username => "git",
-  :publickey => '...',
-  :privatekey => '...',
-  :passphrase => "a passphrase goes here"
-}
-@db.committer = {
-  :email => "me@example.com",
-  :name => "Me at Work"
-}
+```
+CapitalGit.load!("config/capitalgit.yml")
+```
 
+Now you can interact with repositories like so:
+
+```
 # clones/pulls a local copy of git@server.example.com:repo-slug.git
-@repo = @db.connect('git@server.example.com:repo-slug.git')
+@repo = CapitalGit.connect("git@github.com:newsdev/capital_git_testrepo.git")
 
 # list files
 @repo.list
@@ -73,42 +53,111 @@ item[:value]
 
 ```
 
-In Rails and Sinatra apps, configuration can be specified in a `config/capitalgit.yml` file. Look at the `config/repos.yml.sample` file here for guidance on syntax. Somewhere during app initialization you'll then need to include this.
+If you want to manually configure databases and skip the config file:
 
 ```
-CapitalGit.load!("config/capitalgit.yml")
+# set up connection information
+@db = CapitalGit::Database.new
+
+# optional configuration
+@db.credentials = {
+  :username => "git",
+  :publickey => '...',
+  :privatekey => '...',
+  :passphrase => "a passphrase goes here"
+}
+@db.committer = {
+  :email => "me@example.com",
+  :name => "Me at Work"
+}
 ```
 
+One caveat, CapitalGit can't initialize new repositories.
 
-Installing the gem also provides a `capital_git` binary that can be run as a server.
+
+Installing the gem also provides a `capital_git` binary that can be run as a server by specifying the path to a configuration file.
 
 ```
 capital_git /path/to/repos.yml
 ```
 
 
+Server Mode
+===========
+
+The server can be run as a binary, or with anything else that takes a `config.ru` file. In that mode it defaults to looking for configuration at `config/repos.yml`. Look in `config/repos.yml.sample` for an example.
+
+The API looks like this.
+
+- `GET /:repo-slug`
+    List contents of a git repo or subfolder of that repo. Response in JSON format.
+
+- `GET /:repo-slug/path/to/file`
+    Return the contents of a file in that git repo wrapped in JSON.
+
+- `PUT /:repo-slug/path/to/file`
+    Update and commit changes to a file. Expects the following POST parameters:
+    
+    - `value` The new contents of the file.
+    - `commit_user_email` User email for the commit
+    - `commit_user_name` User name for the commit
+    - `commit_message` Commit message
+
+    Puts are immediately pushed to the remote server.
+
+
+
 Development
 ===========
 
-Have at it! Set everything up.
+Set everything up:
 
 ```
 bundle install
 ```
 
-Run the server.
+Run the server:
 
 ```
 shotgun -p 4567 config.ru
 ```
 
-Test suite is written with Minitest. To run, simply.
+Or load things from the command line with `./bin/console`
+
+```
+# set up where the local working copy will be
+tmp_path = Dir.mktmpdir("capital-git-test-repos")
+database = CapitalGit::Database.new({:local_path => tmp_path})
+
+# set which ssh keys to use
+database.credentials = {
+  :username => "git",
+  :publickey => "../test/fixtures/keys/testcapitalgit.pub",
+  :privatekey => "../test/fixtures/keys/testcapitalgit",
+  :passphrase => "capital_git passphrase"
+}
+
+# clone and pull
+repo = database.connect("git@github.com:newsdev/capital_git_testrepo.git")
+
+repo.list
+#=> [ ...stuff... ]
+
+# clean up
+FileUtils.remove_entry_secure(tmp_path)
+```
+
+Have at it!
+
+The test suite is written with Minitest. To run, simply:
 
 ```
 rake
 ```
 
-To build the gem.
+Please try and maintain test coverage for new features. They're in the test directory and hopefully should be fairly easy to follow along with.
+
+To build the gem:
 
 ```
 gem build capital_git.gemspec
@@ -120,9 +169,7 @@ gem build capital_git.gemspec
 Disclaimer
 ==========
 
-This is early pre-release software. Bugs, security holes and future major breaking changes abound. You probably shouldn't be using it yet.
-
-There is no security or authentication to speak of. You should probably not run this on the public internet.
+This is pre-release software. Bugs abound. API unstable. Versioning erratic. You probably shouldn't be using it yet and definitely don't expose the web app to the internet.
 
 
 Copyright

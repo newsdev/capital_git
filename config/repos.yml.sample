@@ -20,7 +20,7 @@
       },
       "committer": {
         "email": "albert.sun@nytimes.com",
-        "name": "albert_capital_git.dev"
+        "name": "Capital Git Developer"
       },
       "local_path": "/tmp/path-to-local-data"
     },
@@ -34,7 +34,20 @@
       },
       "committer": {
         "email": "albert.sun@nytimes.com",
-        "name": "albert_capital_git.dev"
+        "name": "Capital Git Developer"
+      }
+    },
+    {
+      "server": "git@github.com",
+      "credentials": {
+        "username":"git",
+        "publickey":"../test/fixtures/keys/testcapitalgit.pub",
+        "privatekey":"../test/fixtures/keys/testcapitalgit",
+        "passphrase": "capital_git passphrase"
+      },
+      "committer": {
+        "email": "albert.sun@nytimes.com",
+        "name": "Capital Git Developer"
       }
     }
   ],
