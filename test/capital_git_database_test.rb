@@ -50,6 +50,11 @@ class CapitalGitDatabaseTest < Minitest::Test
     assert_in_delta database.committer[:time], Time.now
   end
 
+  def test_empty_committer
+    database = CapitalGit::Database.new
+    assert_nil database.committer
+  end
+
   def test_cleanup
     database = CapitalGit::Database.new
     @tmp_path = Dir.mktmpdir("capital-git-test-repos")

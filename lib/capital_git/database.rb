@@ -64,7 +64,8 @@ module CapitalGit
       @committer[:name] = committer_info[:name] || committer_info["name"]
     end
     def committer
-      {
+      return nil if @committer.nil?
+      return {
         :email => @committer[:email] || nil,
         :name => @committer[:name] || nil,
         :time => Time.now
