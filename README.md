@@ -72,10 +72,11 @@ If you want to manually configure databases and skip the config file:
 }
 ```
 
-One caveat, CapitalGit can't initialize new repositories.
+Right now, only local repositories and repositories cloned over ssh with keys specified as a file. Support for HTTP(S) basic auth and SSH agent key support are planned. (Or you could implement it!)
 
+Another caveat, CapitalGit can't initialize new repositories.
 
-Installing the gem also provides a `capital_git` binary that can be run as a server by specifying the path to a configuration file.
+Installing the gem provides a `capital_git` binary that can be run as a server by specifying the path to a configuration file.
 
 ```
 capital_git /path/to/repos.yml
@@ -162,6 +163,19 @@ To build the gem:
 ```
 gem build capital_git.gemspec
 ```
+
+Troubleshooting
+===============
+
+There are potential issues with installing to be able to handle ssh keys and cloning remotely. On OS X you need both cmake and libssh2 (of version at least 1.4.3) installed, and then the gem must be compiled with libssh2 available for dynamic linking.
+
+Hopefully this will work.
+
+```
+brew install cmake libssh2
+```
+
+If not, get in touch.
 
 
 ----
