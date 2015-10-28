@@ -71,6 +71,12 @@ module CapitalGit
   # TODO: weird that database options here don't apply to
   # already initialized databases
   def self.connect url, options={}, database_options={}
+    @@repositories.each do |name, repo|
+      if url == repo.url
+        return repo
+      end
+    end
+
     @@databases.each do |servername, database|
       if url[0,servername.length] == servername
         return database.connect(url, options)
@@ -85,10 +91,10 @@ module CapitalGit
 
   # purge local clones
   def self.cleanup!
-    @@databases.each do |d|
+    @@databases.each do |server_name, d|
       d.cleanup
     end
-    @@repositories.each do |r|
+    @@repositories.each do |repo_name, r|
       r.database.cleanup
     end
   end
