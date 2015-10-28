@@ -58,7 +58,11 @@ item[:value]
 # returns some commit information
 # along with a :changes attribute with arrays of :added, :deleted, :renamed, :modified, etc objects
 
+# simple listing of all paths that changed at HEAD
+@repo.show[:changes].values.flatten.map {|o| o[:new_path]}
 
+# text diffs of each modified (but not added/deleted) file in the latest commit on master
+@repo.show(:branch => "master")[:changes][:modified].map {|o| o[:patch]}
 
 ```
 
