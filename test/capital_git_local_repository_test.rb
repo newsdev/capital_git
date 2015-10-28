@@ -90,6 +90,22 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
     assert_equal tree, @repo.read_all(:mode => :tree)
   end
 
+  def test_show
+    refute_nil @repo.show
+
+    assert_equal @repo.show, @repo.show(:commit => "36060c58702ed4c2a40832c51758d5344201d89a")
+    assert_equal @repo.show, @repo.show(:branch => "master")
+    refute_equal @repo.show, @repo.show(:commit => "5b5b025afb0b4c913b4c338a42934a3863bf3644")
+
+    refute_nil @repo.show(:commit => @repo.log[0][:oid])
+    refute_nil @repo.show(:commit => @repo.log[1][:oid])
+    refute_nil @repo.show(:commit => @repo.log[2][:oid])
+
+    show_val = {:oid=>"36060c58702ed4c2a40832c51758d5344201d89a", :message=>"subdirectories\n", :author=>{:name=>"Scott Chacon", :email=>"schacon@gmail.com", :time=>Time.parse("2010-10-26 15:44:21 -0200")}, :time=>Time.parse("2010-10-26 13:44:21 -0400"), :changes=>{:added=>[{:old_path=>"subdir/README", :new_path=>"subdir/README", :patch=>"diff --git a/subdir/README b/subdir/README\nnew file mode 100644\nindex 0000000..1385f26\n--- /dev/null\n+++ b/subdir/README\n@@ -0,0 +1 @@\n+hey\n"}, {:old_path=>"subdir/new.txt", :new_path=>"subdir/new.txt", :patch=>"diff --git a/subdir/new.txt b/subdir/new.txt\nnew file mode 100644\nindex 0000000..fa49b07\n--- /dev/null\n+++ b/subdir/new.txt\n@@ -0,0 +1 @@\n+new file\n"}, {:old_path=>"subdir/subdir2/README", :new_path=>"subdir/subdir2/README", :patch=>"diff --git a/subdir/subdir2/README b/subdir/subdir2/README\nnew file mode 100644\nindex 0000000..1385f26\n--- /dev/null\n+++ b/subdir/subdir2/README\n@@ -0,0 +1 @@\n+hey\n"}, {:old_path=>"subdir/subdir2/new.txt", :new_path=>"subdir/subdir2/new.txt", :patch=>"diff --git a/subdir/subdir2/new.txt b/subdir/subdir2/new.txt\nnew file mode 100644\nindex 0000000..fa49b07\n--- /dev/null\n+++ b/subdir/subdir2/new.txt\n@@ -0,0 +1 @@\n+new file\n"}]}}
+
+    assert_equal show_val, @repo.show
+  end
+
   def teardown
     FileUtils.remove_entry_secure(@tmp_path)
   end
@@ -329,9 +345,7 @@ class CapitalGitBranchesTest < Minitest::Test
   end
 end
 
-
-
-# Create test case for cloning on one default branch
+# Test cases for cloning on one default branch
 # and then reading files from another branch
 
 class CapitalGitSwitchBranchesTest < Minitest::Test

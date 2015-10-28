@@ -51,6 +51,15 @@ item[:value]
 # each of these methods can take a :branch option to operate on a non-default branch
 @repo.list(branch: "some-branch")
 
+# can also see what's changed
+@repo.show # equivalent to git show
+@repo.show(:branch => "master")
+@repo.show(:commit => "9db5b61dd6761c647cb537c7fe2fd8339d80219f")
+# returns some commit information
+# along with a :changes attribute with arrays of :added, :deleted, :renamed, :modified, etc objects
+
+
+
 ```
 
 If you want to manually configure databases and skip the config file:

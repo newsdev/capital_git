@@ -333,6 +333,70 @@ module CapitalGit
       raise "Not implemented"
     end
 
+    # show diffs for everything that changed in the latest commit on head
+    # or latest on :branch => 
+    # or latest on :sha =>
+    def show(options={})
+      pull!
+
+      # find latest or specific commit
+      if options[:branch]
+        ref = reference(options[:branch])
+        return nil if !ref
+        commit = ref.target
+      elsif options[:commit] || options[:sha] || options[:oid]
+        commit = repository.lookup(options[:commit] || options[:sha] || options[:oid])
+      else
+        ref = repository.head
+        commit = ref.target
+      end
+
+      if !commit.parents[0].nil?
+        diff = commit.parents[0].diff(commit)
+      else
+        diff = Rugged::Tree.diff(repository,nil,commit)
+      end
+      diff.find_similar! # calculate which are renames instead of delete/adds
+
+      # diff.each_delta
+      # dlt = diff.each_delta.first
+      # @repo.repository.read(dlt.new_file[:oid]).data.force_encoding("UTF-8")
+
+      # # patch from diff
+      # patch = diff.each_patch.first
+
+      # # patch from dlt
+      # Rugged::Patch.from_strings(
+      #     @repo.repository.read(dlt.new_file[:oid]).data.force_encoding("UTF-8"),
+      #     @repo.repository.read(dlt.new_file[:oid]).data.force_encoding("UTF-8")
+      #   )
+
+      # patch.hunks.first.lines
+
+      # changed_paths = diff.each_delta.map {|d| [d.old_file[:path], d.new_file[:path]]}.flatten.uniq
+
+      changes = diff.each_patch.reduce({}) do |memo, patch|
+        dlt = patch.delta
+        if !memo.has_key? dlt.status
+          memo[dlt.status] = []
+        end
+        memo[dlt.status] << {
+          :old_path => dlt.old_file[:path],
+          :new_path => dlt.new_file[:path],
+          :patch => patch.to_s
+        }
+        memo
+      end
+
+      {
+        :oid => commit.oid,
+        :message => commit.message,
+        :author => commit.author,
+        :time => commit.time,
+        :changes => changes
+      }
+    end
+
 
     # methods for interacting with remote
     # TODO:
