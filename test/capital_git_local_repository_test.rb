@@ -56,6 +56,7 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
     assert_equal [:value, :entry, :commits], item.keys
     assert_equal({:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, item[:entry])
     assert_equal 1, item[:commits].length
+    assert_equal "8496071c1b46c854b31185ea97743be6a8774479", item[:commits].first[:oid]
 
     assert_equal @repo.read("new.txt")[:commits].length, 1
 

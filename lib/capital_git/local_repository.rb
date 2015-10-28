@@ -140,7 +140,9 @@ module CapitalGit
             if commit.diff(paths: [key]).size > 0
               {
                 :message => commit.message,
-                :author => commit.author
+                :author => commit.author,
+                :time => commit.time,
+                :oid => commit.oid
               }
             else
               nil
