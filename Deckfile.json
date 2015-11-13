@@ -1,0 +1,12 @@
+{
+  "deckfile_version": 2,
+  "name": "Captial Git",
+  "summary": "Use git as a database.",
+  "byline": "By Albert Sun", 
+  "has_icon": false,
+  "description": "Use git as a backend database for your application.",
+  "contact_email": "albertsun@nytimes.com",
+  "contact_name": "Albert Sun",
+  "contact_slack": "@albertsun",
+  "tags_json": ["dev"]
+}
