@@ -106,6 +106,17 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
     assert_equal show_val, @repo.show
   end
 
+  def test_diff
+    refute_nil @repo.diff
+
+    # diff from head
+    refute_nil @repo.diff(:commit => @repo.log[0][:oid])
+    refute_nil @repo.diff(:commit => @repo.log[1][:oid])
+    refute_nil @repo.diff(:commit => @repo.log[2][:oid])
+
+  end
+
+
   def teardown
     FileUtils.remove_entry_secure(@tmp_path)
   end
