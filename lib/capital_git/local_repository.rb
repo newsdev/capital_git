@@ -339,13 +339,13 @@ module CapitalGit
       raise "Not implemented"
     end
 
-    def diff(commit, options={})
+    def diff(commit, commit2=nil, options={})
       pull!
 
-      if options[:next_commit] 
+      if !commit2.nil? 
         # diff between :commit and :next_commit
         left = repository.lookup(commit)
-        right = repository.lookup(options[:next_commit])
+        right = repository.lookup(commit2)
       else 
         # passed one arg, diff between HEAD & :commit 
         left = repository.head.target
@@ -383,16 +383,16 @@ module CapitalGit
     # show diffs for everything that changed in the latest commit on head
     # or latest on :branch => 
     # or latest on :sha =>
-    def show(options={})
+    def show(sha = nil, branch: nil)
       pull!
 
       # find latest or specific commit
-      if options[:branch]
-        ref = reference(options[:branch])
+      if !branch.nil? 
+        ref = reference(branch)
         return nil if !ref
         commit = ref.target
-      elsif options[:commit] || options[:sha] || options[:oid]
-        commit = repository.lookup(options[:commit] || options[:sha] || options[:oid])
+      elsif !sha.nil?
+        commit = repository.lookup(sha) 
       else
         ref = repository.head
         commit = ref.target
