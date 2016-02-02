@@ -326,11 +326,50 @@ module CapitalGit
       return commit(ref, new_tree, options)
     end
 
-
-
     # delete everything under a directory
     def clear(key, options={})
       raise "Not implemented"
+    end
+
+    def diff(commit, options={})
+      pull!
+
+      if options[:next_commit] 
+        # diff between :commit and :next_commit
+        left = repository.lookup(commit)
+        right = repository.lookup(options[:next_commit])
+      else 
+        # passed one arg, diff between HEAD & :commit 
+        left = repository.head.target
+        right = repository.lookup(commit)
+      end 
+
+      diff_opts = {}
+      if options[:paths] 
+        diff_opts = {:paths => options[:paths]}
+      end
+
+      diff = repository.diff(left, right, diff_opts) 
+      diff.find_similar! # calculate which are renames instead of delete/adds
+
+      changes = diff.each_patch.reduce({}) do |memo, patch|
+        dlt = patch.delta
+        if !memo.has_key? dlt.status
+          memo[dlt.status] = []
+        end
+        memo[dlt.status] << {
+          :old_path => dlt.old_file[:path],
+          :new_path => dlt.new_file[:path],
+          :patch => patch.to_s
+        }
+        memo
+      end
+
+      {
+        :left => left.oid,
+        :right => right.oid, 
+        :changes => changes
+      }
     end
 
     # show diffs for everything that changed in the latest commit on head
