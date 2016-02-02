@@ -117,37 +117,45 @@ module CapitalGit
 
       return nil if repository.empty?
 
-      if options[:branch]
-        ref = reference(options[:branch])
-        return nil if !ref
-      else
-        ref = repository.head
+      begin
+        if options[:branch]
+          commit = reference(options[:branch]).nil? ? nil : reference(options[:branch]).target
+          return nil if !commit
+        elsif options[:sha]
+          commit = repository.lookup(options[:sha])
+        else
+          commit = repository.head.target
+        end
+      rescue Rugged::OdbError
+        commit = nil
       end
 
       resp = {}
 
-      ref.target.tree.walk_blobs do |root,entry|
-        if (root.empty? && (entry[:name] == key)) or 
-            ((root[0,@directory.length] == @directory) && (File.join(root, entry[:name]) == key))
-          blob = repository.read(entry[:oid])
-          resp[:value] = blob.data.force_encoding('UTF-8')
-          resp[:entry] = entry
-          walker = Rugged::Walker.new(repository)
-          walker.push(ref.target.oid)
-          walker.sorting(Rugged::SORT_DATE)
-          walker.push(ref.target)
-          resp[:commits] = walker.map do |commit|
-            if commit.diff(paths: [key]).size > 0
-              {
-                :message => commit.message,
-                :author => commit.author,
-                :time => commit.time,
-                :oid => commit.oid
-              }
-            else
-              nil
-            end
-          end.compact.first(10)
+      if !commit.nil?
+        commit.tree.walk_blobs do |root,entry|
+          if (root.empty? && (entry[:name] == key)) or 
+              ((root[0,@directory.length] == @directory) && (File.join(root, entry[:name]) == key))
+            blob = repository.read(entry[:oid])
+            resp[:value] = blob.data.force_encoding('UTF-8')
+            resp[:entry] = entry
+            walker = Rugged::Walker.new(repository)
+            walker.push(commit.oid)
+            walker.sorting(Rugged::SORT_DATE)
+            walker.push(commit)
+            resp[:commits] = walker.map do |commit|
+              if commit.diff(paths: [key]).size > 0
+                {
+                  :message => commit.message,
+                  :author => commit.author,
+                  :time => commit.time,
+                  :oid => commit.oid
+                }
+              else
+                nil
+              end
+            end.compact.first(10)
+          end
         end
       end
 

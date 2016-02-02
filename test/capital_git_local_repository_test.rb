@@ -63,6 +63,18 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
     assert_nil @repo.read("nonexistent.txt"), "Read returns nil when object doesn't exist"
   end
 
+  def test_read_sha
+    item = @repo.read("README", { :sha => "8496071c1b46c854b31185ea97743be6a8774479" })
+    assert_equal "hey\n", item[:value]
+    assert_equal [:value, :entry, :commits], item.keys
+    assert_equal({:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, item[:entry])
+    assert_equal 1, item[:commits].length
+    assert_equal "8496071c1b46c854b31185ea97743be6a8774479", item[:commits].first[:oid]
+
+    assert_nil @repo.read("README", { :sha => "8496071c1b46c854b31185ea97743be6a8774478"}), "Read returns nil when object doesn't exist"
+
+  end
+
   def test_read_all
     flat = [
         {:path => "README", :value => "hey\n"},
