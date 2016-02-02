@@ -63,6 +63,18 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
     assert_nil @repo.read("nonexistent.txt"), "Read returns nil when object doesn't exist"
   end
 
+  def test_read_sha
+    item = @repo.read("README", { :sha => "8496071c1b46c854b31185ea97743be6a8774479" })
+    assert_equal "hey\n", item[:value]
+    assert_equal [:value, :entry, :commits], item.keys
+    assert_equal({:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, item[:entry])
+    assert_equal 1, item[:commits].length
+    assert_equal "8496071c1b46c854b31185ea97743be6a8774479", item[:commits].first[:oid]
+
+    assert_nil @repo.read("README", { :sha => "deadbeef"}), "Read returns nil when object doesn't exist at that sha"
+
+  end
+
   def test_read_all
     flat = [
         {:path => "README", :value => "hey\n"},
@@ -91,20 +103,45 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
   end
 
   def test_show
-    refute_nil @repo.show
+    refute_nil @repo.show 
 
-    assert_equal @repo.show, @repo.show(:commit => "36060c58702ed4c2a40832c51758d5344201d89a")
-    assert_equal @repo.show, @repo.show(:branch => "master")
-    refute_equal @repo.show, @repo.show(:commit => "5b5b025afb0b4c913b4c338a42934a3863bf3644")
+    assert_equal @repo.show, @repo.show("36060c58702ed4c2a40832c51758d5344201d89a")
+    assert_equal @repo.show, @repo.show(nil, :branch => "master")
+    refute_equal @repo.show, @repo.show("5b5b025afb0b4c913b4c338a42934a3863bf3644")
 
-    refute_nil @repo.show(:commit => @repo.log[0][:oid])
-    refute_nil @repo.show(:commit => @repo.log[1][:oid])
-    refute_nil @repo.show(:commit => @repo.log[2][:oid])
+    refute_nil @repo.show @repo.log[0][:oid]
+    refute_nil @repo.show @repo.log[1][:oid]
+    refute_nil @repo.show @repo.log[2][:oid]
 
     show_val = {:oid=>"36060c58702ed4c2a40832c51758d5344201d89a", :message=>"subdirectories\n", :author=>{:name=>"Scott Chacon", :email=>"schacon@gmail.com", :time=>Time.parse("2010-10-26 15:44:21 -0200")}, :time=>Time.parse("2010-10-26 13:44:21 -0400"), :changes=>{:added=>[{:old_path=>"subdir/README", :new_path=>"subdir/README", :patch=>"diff --git a/subdir/README b/subdir/README\nnew file mode 100644\nindex 0000000..1385f26\n--- /dev/null\n+++ b/subdir/README\n@@ -0,0 +1 @@\n+hey\n"}, {:old_path=>"subdir/new.txt", :new_path=>"subdir/new.txt", :patch=>"diff --git a/subdir/new.txt b/subdir/new.txt\nnew file mode 100644\nindex 0000000..fa49b07\n--- /dev/null\n+++ b/subdir/new.txt\n@@ -0,0 +1 @@\n+new file\n"}, {:old_path=>"subdir/subdir2/README", :new_path=>"subdir/subdir2/README", :patch=>"diff --git a/subdir/subdir2/README b/subdir/subdir2/README\nnew file mode 100644\nindex 0000000..1385f26\n--- /dev/null\n+++ b/subdir/subdir2/README\n@@ -0,0 +1 @@\n+hey\n"}, {:old_path=>"subdir/subdir2/new.txt", :new_path=>"subdir/subdir2/new.txt", :patch=>"diff --git a/subdir/subdir2/new.txt b/subdir/subdir2/new.txt\nnew file mode 100644\nindex 0000000..fa49b07\n--- /dev/null\n+++ b/subdir/subdir2/new.txt\n@@ -0,0 +1 @@\n+new file\n"}]}}
 
     assert_equal show_val, @repo.show
   end
+
+  def test_diff
+
+    # no changes on diff to head 
+    diff_val = {:left=>"36060c58702ed4c2a40832c51758d5344201d89a", :right=>"36060c58702ed4c2a40832c51758d5344201d89a", :changes=>{}}
+    assert_equal diff_val, @repo.diff(@repo.log[0][:oid])
+
+    diff_val = {:left=>"36060c58702ed4c2a40832c51758d5344201d89a", :right=>"5b5b025afb0b4c913b4c338a42934a3863bf3644", :changes=>{:deleted=>[{:old_path=>"subdir/README", :new_path=>"subdir/README", :patch=>"diff --git a/subdir/README b/subdir/README\ndeleted file mode 100644\nindex 1385f26..0000000\n--- a/subdir/README\n+++ /dev/null\n@@ -1 +0,0 @@\n-hey\n"}, {:old_path=>"subdir/new.txt", :new_path=>"subdir/new.txt", :patch=>"diff --git a/subdir/new.txt b/subdir/new.txt\ndeleted file mode 100644\nindex fa49b07..0000000\n--- a/subdir/new.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-new file\n"}, {:old_path=>"subdir/subdir2/README", :new_path=>"subdir/subdir2/README", :patch=>"diff --git a/subdir/subdir2/README b/subdir/subdir2/README\ndeleted file mode 100644\nindex 1385f26..0000000\n--- a/subdir/subdir2/README\n+++ /dev/null\n@@ -1 +0,0 @@\n-hey\n"}, {:old_path=>"subdir/subdir2/new.txt", :new_path=>"subdir/subdir2/new.txt", :patch=>"diff --git a/subdir/subdir2/new.txt b/subdir/subdir2/new.txt\ndeleted file mode 100644\nindex fa49b07..0000000\n--- a/subdir/subdir2/new.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-new file\n"}]}}
+    assert_equal diff_val, @repo.diff(@repo.log[1][:oid])
+
+    diff_val = {:left=>"36060c58702ed4c2a40832c51758d5344201d89a", :right=>"8496071c1b46c854b31185ea97743be6a8774479", :changes=>{:deleted=>[{:old_path=>"new.txt", :new_path=>"new.txt", :patch=>"diff --git a/new.txt b/new.txt\ndeleted file mode 100644\nindex fa49b07..0000000\n--- a/new.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-new file\n"}, {:old_path=>"subdir/README", :new_path=>"subdir/README", :patch=>"diff --git a/subdir/README b/subdir/README\ndeleted file mode 100644\nindex 1385f26..0000000\n--- a/subdir/README\n+++ /dev/null\n@@ -1 +0,0 @@\n-hey\n"}, {:old_path=>"subdir/new.txt", :new_path=>"subdir/new.txt", :patch=>"diff --git a/subdir/new.txt b/subdir/new.txt\ndeleted file mode 100644\nindex fa49b07..0000000\n--- a/subdir/new.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-new file\n"}, {:old_path=>"subdir/subdir2/README", :new_path=>"subdir/subdir2/README", :patch=>"diff --git a/subdir/subdir2/README b/subdir/subdir2/README\ndeleted file mode 100644\nindex 1385f26..0000000\n--- a/subdir/subdir2/README\n+++ /dev/null\n@@ -1 +0,0 @@\n-hey\n"}, {:old_path=>"subdir/subdir2/new.txt", :new_path=>"subdir/subdir2/new.txt", :patch=>"diff --git a/subdir/subdir2/new.txt b/subdir/subdir2/new.txt\ndeleted file mode 100644\nindex fa49b07..0000000\n--- a/subdir/subdir2/new.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-new file\n"}]}}
+
+    assert_equal diff_val, @repo.diff(@repo.log[2][:oid])
+
+    # diff between two commits
+    diff_val = {:left=>"5b5b025afb0b4c913b4c338a42934a3863bf3644", :right=>"8496071c1b46c854b31185ea97743be6a8774479", :changes=>{:deleted=>[{:old_path=>"new.txt", :new_path=>"new.txt", :patch=>"diff --git a/new.txt b/new.txt\ndeleted file mode 100644\nindex fa49b07..0000000\n--- a/new.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-new file\n"}]}}
+    assert_equal diff_val, @repo.diff(@repo.log[1][:oid], @repo.log[2][:oid])
+
+    # confine changes to specific path
+    diff_val = {:left=>"36060c58702ed4c2a40832c51758d5344201d89a", :right=>"8496071c1b46c854b31185ea97743be6a8774479", :changes=>{:deleted=>[{:old_path=>"subdir/README", :new_path=>"subdir/README", :patch=>"diff --git a/subdir/README b/subdir/README\ndeleted file mode 100644\nindex 1385f26..0000000\n--- a/subdir/README\n+++ /dev/null\n@@ -1 +0,0 @@\n-hey\n"}, {:old_path=>"subdir/subdir2/README", :new_path=>"subdir/subdir2/README", :patch=>"diff --git a/subdir/subdir2/README b/subdir/subdir2/README\ndeleted file mode 100644\nindex 1385f26..0000000\n--- a/subdir/subdir2/README\n+++ /dev/null\n@@ -1 +0,0 @@\n-hey\n"}]}}
+    opts = {:paths => ['*README']}
+    assert_equal diff_val, @repo.diff(@repo.log[2][:oid], nil, opts)
+
+  end
+
 
   def teardown
     FileUtils.remove_entry_secure(@tmp_path)

@@ -30,7 +30,6 @@ module CapitalGit
   # defined in a config file
   def self.load! path_to_config, environment = nil
     environment = self.env_name if environment.nil?
-
     @@config = YAML::load(File.read(path_to_config))[environment]
     self.load_config! @@config
   end

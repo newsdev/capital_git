@@ -117,37 +117,45 @@ module CapitalGit
 
       return nil if repository.empty?
 
-      if options[:branch]
-        ref = reference(options[:branch])
-        return nil if !ref
-      else
-        ref = repository.head
+      begin
+        if options[:branch]
+          commit = reference(options[:branch]).nil? ? nil : reference(options[:branch]).target
+          return nil if !commit
+        elsif options[:sha]
+          commit = repository.lookup(options[:sha])
+        else
+          commit = repository.head.target
+        end
+      rescue Rugged::OdbError
+        commit = nil
       end
 
       resp = {}
 
-      ref.target.tree.walk_blobs do |root,entry|
-        if (root.empty? && (entry[:name] == key)) or 
-            ((root[0,@directory.length] == @directory) && (File.join(root, entry[:name]) == key))
-          blob = repository.read(entry[:oid])
-          resp[:value] = blob.data.force_encoding('UTF-8')
-          resp[:entry] = entry
-          walker = Rugged::Walker.new(repository)
-          walker.push(ref.target.oid)
-          walker.sorting(Rugged::SORT_DATE)
-          walker.push(ref.target)
-          resp[:commits] = walker.map do |commit|
-            if commit.diff(paths: [key]).size > 0
-              {
-                :message => commit.message,
-                :author => commit.author,
-                :time => commit.time,
-                :oid => commit.oid
-              }
-            else
-              nil
-            end
-          end.compact.first(10)
+      if !commit.nil?
+        commit.tree.walk_blobs do |root,entry|
+          if (root.empty? && (entry[:name] == key)) or 
+              ((root[0,@directory.length] == @directory) && (File.join(root, entry[:name]) == key))
+            blob = repository.read(entry[:oid])
+            resp[:value] = blob.data.force_encoding('UTF-8')
+            resp[:entry] = entry
+            walker = Rugged::Walker.new(repository)
+            walker.push(commit.oid)
+            walker.sorting(Rugged::SORT_DATE)
+            walker.push(commit)
+            resp[:commits] = walker.map do |commit|
+              if commit.diff(paths: [key]).size > 0
+                {
+                  :message => commit.message,
+                  :author => commit.author,
+                  :time => commit.time,
+                  :oid => commit.oid
+                }
+              else
+                nil
+              end
+            end.compact.first(10)
+          end
         end
       end
 
@@ -326,26 +334,65 @@ module CapitalGit
       return commit(ref, new_tree, options)
     end
 
-
-
     # delete everything under a directory
     def clear(key, options={})
       raise "Not implemented"
     end
 
+    def diff(commit, commit2=nil, options={})
+      pull!
+
+      if !commit2.nil? 
+        # diff between :commit and :next_commit
+        left = repository.lookup(commit)
+        right = repository.lookup(commit2)
+      else 
+        # passed one arg, diff between HEAD & :commit 
+        left = repository.head.target
+        right = repository.lookup(commit)
+      end 
+
+      diff_opts = {}
+      if options[:paths] 
+        diff_opts = {:paths => options[:paths]}
+      end
+
+      diff = repository.diff(left, right, diff_opts) 
+      diff.find_similar! # calculate which are renames instead of delete/adds
+
+      changes = diff.each_patch.reduce({}) do |memo, patch|
+        dlt = patch.delta
+        if !memo.has_key? dlt.status
+          memo[dlt.status] = []
+        end
+        memo[dlt.status] << {
+          :old_path => dlt.old_file[:path],
+          :new_path => dlt.new_file[:path],
+          :patch => patch.to_s
+        }
+        memo
+      end
+
+      {
+        :left => left.oid,
+        :right => right.oid, 
+        :changes => changes
+      }
+    end
+
     # show diffs for everything that changed in the latest commit on head
     # or latest on :branch => 
     # or latest on :sha =>
-    def show(options={})
+    def show(sha = nil, branch: nil)
       pull!
 
       # find latest or specific commit
-      if options[:branch]
-        ref = reference(options[:branch])
+      if !branch.nil? 
+        ref = reference(branch)
         return nil if !ref
         commit = ref.target
-      elsif options[:commit] || options[:sha] || options[:oid]
-        commit = repository.lookup(options[:commit] || options[:sha] || options[:oid])
+      elsif !sha.nil?
+        commit = repository.lookup(sha) 
       else
         ref = repository.head
         commit = ref.target
