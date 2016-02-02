@@ -368,7 +368,7 @@ module CapitalGit
         memo[dlt.status] << {
           :old_path => dlt.old_file[:path],
           :new_path => dlt.new_file[:path],
-          :patch => patch.to_s
+          :patch => patch.to_s.force_encoding('UTF-8')
         }
         memo
       end
