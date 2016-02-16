@@ -471,3 +471,69 @@ end
 
 
 
+
+# TODO:
+# want to be able to call multiple repository methods
+# and skip the constant pulling/pushing in-between
+# and batch the interaction with server all into one
+# so...
+# call these transactions?
+# 
+# some form of block syntax?
+#
+# repo.sync do |r|
+#   r.list
+#   r.log
+# end
+#  
+# within the block, one pull! is issued before all statements
+# and they then don't individually call sync
+# 
+# or more explicitly
+# 
+# repo.start_synced
+# repo.list
+# repo.log
+# repo.end_synced
+# 
+# tx = repo.get_transaction
+# tx.list
+# tx.log
+# tx.end_transaction
+# 
+# 
+# or use the system clock and a config setting (with a default)
+# CapitalGit.config.sync_interval = 5s
+#
+# repo.list    # will pull
+# repo.log     # won't pull
+#              # wait 5 seconds
+# repo.list    # will pull
+#
+# then any calls that take place within 5 seconds of a previous pull will not pull again
+
+
+class CapitalGitSessionTest < Minitest::Test
+  def setup
+    @tmp_path = Dir.mktmpdir("capital-git-test-repos")
+    @fixtures_path = File.expand_path("fixtures", File.dirname(__FILE__))
+    @database = CapitalGit::Database.new({:local_path => @tmp_path})
+    @repo = @database.connect("#{@fixtures_path}/testrepo.git")
+  end
+
+  def test_synchronized_requests
+    skip("for now")
+    # assert_equal [
+    #     {:entry=>{:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, :path=>"README"},
+    #     {:entry=>{:name=>"new.txt", :oid=>"fa49b077972391ad58037050f2a75f74e3671e92", :filemode=>33188, :type=>:blob}, :path=>"new.txt"},
+    #     {:entry=>{:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, :path=>"subdir/README"},
+    #     {:entry=>{:name=>"new.txt", :oid=>"fa49b077972391ad58037050f2a75f74e3671e92", :filemode=>33188, :type=>:blob}, :path=>"subdir/new.txt"},
+    #     {:entry=>{:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, :path=>"subdir/subdir2/README"},
+    #     {:entry=>{:name=>"new.txt", :oid=>"fa49b077972391ad58037050f2a75f74e3671e92", :filemode=>33188, :type=>:blob}, :path=>"subdir/subdir2/new.txt"}
+    #   ], @repo.list, "Git list items works"
+  end
+
+  def teardown
+    FileUtils.remove_entry_secure(@tmp_path)
+  end
+end

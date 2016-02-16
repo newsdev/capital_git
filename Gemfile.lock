@@ -9,13 +9,13 @@ PATH
 GEM
   remote: http://rubygems.org/
   specs:
-    byebug (6.0.2)
+    byebug (8.2.2)
     json (1.8.3)
-    minitest (5.8.0)
+    minitest (5.8.4)
     rack (1.6.4)
     rack-protection (1.5.3)
       rack
-    rake (10.4.2)
+    rake (10.5.0)
     rugged (0.23.3)
     shotgun (0.9.1)
       rack (>= 1.0)
