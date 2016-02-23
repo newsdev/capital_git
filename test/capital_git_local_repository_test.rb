@@ -522,15 +522,18 @@ class CapitalGitSessionTest < Minitest::Test
   end
 
   def test_synchronized_requests
-    skip("for now")
-    # assert_equal [
-    #     {:entry=>{:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, :path=>"README"},
-    #     {:entry=>{:name=>"new.txt", :oid=>"fa49b077972391ad58037050f2a75f74e3671e92", :filemode=>33188, :type=>:blob}, :path=>"new.txt"},
-    #     {:entry=>{:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, :path=>"subdir/README"},
-    #     {:entry=>{:name=>"new.txt", :oid=>"fa49b077972391ad58037050f2a75f74e3671e92", :filemode=>33188, :type=>:blob}, :path=>"subdir/new.txt"},
-    #     {:entry=>{:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, :path=>"subdir/subdir2/README"},
-    #     {:entry=>{:name=>"new.txt", :oid=>"fa49b077972391ad58037050f2a75f74e3671e92", :filemode=>33188, :type=>:blob}, :path=>"subdir/subdir2/new.txt"}
-    #   ], @repo.list, "Git list items works"
+    mock = MiniTest::Mock.new
+    mock.expect(:call, {})
+    
+    @repo.stub :"pull!", mock do
+      @repo.sync do |r|
+        r.list
+        r.log
+      end
+    end
+
+    # expect pull! to only be called once
+    mock.verify
   end
 
   def teardown

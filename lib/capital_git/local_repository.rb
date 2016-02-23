@@ -58,6 +58,12 @@ module CapitalGit
       @repository
     end
 
+
+    def sync
+      pull!
+      yield(self)
+    end
+
     def list(options={})
       pull!
 
