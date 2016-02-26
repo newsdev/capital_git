@@ -6,3 +6,4 @@ CapitalGit.logger.level = Logger::ERROR
 ENV["CAPITAL_GIT_ENV"] = "test"
 
 require 'minitest/autorun'
+require 'minitest/mock'
