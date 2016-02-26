@@ -64,6 +64,17 @@ item[:value]
 # text diffs of each modified (but not added/deleted) file in the latest commit on master
 @repo.show(:branch => "master")[:changes][:modified].map {|o| o[:patch]}
 
+
+# each of these methods that read the repository will pull from the remote
+# to reduce the number of pulls to call multiple in succession use sync
+# to ensure everything in the block will see the same repository state
+@repo.sync do |repo|
+  {
+    files: repo.list,
+    commits: repo.log
+  }
+end
+
 ```
 
 If you want to manually configure databases and skip the config file:
