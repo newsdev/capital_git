@@ -67,8 +67,9 @@ module CapitalGit
     @@repositories[name]
   end
 
-  # TODO: weird that database options here don't apply to
-  # already initialized databases
+  # TODO: database options here don't apply to
+  # databases that were already initialized in load_config
+  # could be confusing
   def self.connect url, options={}, database_options={}
     @@repositories.each do |name, repo|
       if url == repo.url

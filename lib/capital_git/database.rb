@@ -9,8 +9,8 @@ module CapitalGit
       
       self.local_path = options[:local_path] ||
                     File.expand_path(File.join("../..", "tmp"), File.dirname(__FILE__))
-      # TODO: this should default to something more unique
-      # use Dir.mktmpdir or something and make sure it works across platforms
+      # TODO: should this default to something more unique?
+      # like using Dir.mktmpdir or something and make sure it works across platforms
 
       self.credentials = options[:credentials] if options[:credentials].is_a? Hash
       self.committer = options[:committer] if options[:committer].is_a? Hash
@@ -45,7 +45,7 @@ module CapitalGit
       privatekey_path = keypath(credential[:privatekey] || credential["privatekey"])
       @logger.debug("Keys at #{publickey_path} and #{privatekey_path} and base at #{CapitalGit.base_keypath}")
       @credentials = Rugged::Credentials::SshKey.new({
-        :username => credential[:username] || credential["username"], # TODO: this could be picked up from connection string
+        :username => credential[:username] || credential["username"],
         :publickey => publickey_path,
         :privatekey => privatekey_path,
         :passphrase => credential[:passphrase] || credential["passphrase"] || nil
@@ -73,9 +73,7 @@ module CapitalGit
     end
 
 
-    # TODO:
-    # when should this be called?
-    # does it need to do anything else other than delete the dir?
+    # clear up existing clones, so they can be gotten fresh
     def cleanup
       FileUtils.remove_entry_secure(local_path)
     end
@@ -91,16 +89,6 @@ module CapitalGit
       else
         File.expand_path(path, CapitalGit.base_keypath)
       end
-      # if !name.include?("/")
-      #   File.expand_path(File.join("../../config/keys", name), File.dirname(__FILE__))
-      # elsif name[0] == "/"
-      #   name
-      # else
-      #   # better way of finding keys.
-      #   # ENV var?
-      #   # Rails.root?
-      #   # File.expand_path(name, File.dirname(__FILE__))
-      # end
     end
 
   end

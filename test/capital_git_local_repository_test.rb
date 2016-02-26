@@ -23,12 +23,12 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
 
   def test_listing_items
     assert_equal [
-        {:entry=>{:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, :path=>"README"},
-        {:entry=>{:name=>"new.txt", :oid=>"fa49b077972391ad58037050f2a75f74e3671e92", :filemode=>33188, :type=>:blob}, :path=>"new.txt"},
-        {:entry=>{:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, :path=>"subdir/README"},
-        {:entry=>{:name=>"new.txt", :oid=>"fa49b077972391ad58037050f2a75f74e3671e92", :filemode=>33188, :type=>:blob}, :path=>"subdir/new.txt"},
-        {:entry=>{:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, :path=>"subdir/subdir2/README"},
-        {:entry=>{:name=>"new.txt", :oid=>"fa49b077972391ad58037050f2a75f74e3671e92", :filemode=>33188, :type=>:blob}, :path=>"subdir/subdir2/new.txt"}
+        {:entry=>{:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08"}, :path=>"README"},
+        {:entry=>{:name=>"new.txt", :oid=>"fa49b077972391ad58037050f2a75f74e3671e92"}, :path=>"new.txt"},
+        {:entry=>{:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08"}, :path=>"subdir/README"},
+        {:entry=>{:name=>"new.txt", :oid=>"fa49b077972391ad58037050f2a75f74e3671e92"}, :path=>"subdir/new.txt"},
+        {:entry=>{:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08"}, :path=>"subdir/subdir2/README"},
+        {:entry=>{:name=>"new.txt", :oid=>"fa49b077972391ad58037050f2a75f74e3671e92"}, :path=>"subdir/subdir2/new.txt"}
       ], @repo.list, "Git list items works"
   end
 
@@ -54,7 +54,7 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
     item = @repo.read("README")
     assert_equal "hey\n", item[:value]
     assert_equal [:value, :entry, :commits], item.keys
-    assert_equal({:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, item[:entry])
+    assert_equal({:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08"}, item[:entry])
     assert_equal 1, item[:commits].length
     assert_equal "8496071c1b46c854b31185ea97743be6a8774479", item[:commits].first[:oid]
 
@@ -67,7 +67,7 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
     item = @repo.read("README", { :sha => "8496071c1b46c854b31185ea97743be6a8774479" })
     assert_equal "hey\n", item[:value]
     assert_equal [:value, :entry, :commits], item.keys
-    assert_equal({:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08", :filemode=>33188, :type=>:blob}, item[:entry])
+    assert_equal({:name=>"README", :oid=>"1385f264afb75a56a5bec74243be9b367ba4ca08"}, item[:entry])
     assert_equal 1, item[:commits].length
     assert_equal "8496071c1b46c854b31185ea97743be6a8774479", item[:commits].first[:oid]
 
@@ -353,7 +353,6 @@ class CapitalGitBranchesTest < Minitest::Test
 
   def test_read_another_branch
     file = @repo.read("another.txt", branch: "packed")
-    assert_equal :blob, file[:entry][:type]
     assert_equal "yet another file\n", file[:value]
     assert_equal "packed commit one\n", file[:commits][0][:message]
   end

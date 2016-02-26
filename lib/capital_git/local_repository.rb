@@ -3,7 +3,6 @@ require 'rugged'
 module CapitalGit
   class LocalRepository
 
-    # TODO: do we want to proxy methods from local back to parent?
     class Local
       def initialize(parent, name, options={})
         @parent = parent
@@ -33,7 +32,6 @@ module CapitalGit
       end
 
       def local_path
-        # File.expand_path(File.join("../..", "tmp", @name), File.dirname(__FILE__))
         File.join(@parent.database.local_path, @name)
       end
 
@@ -42,7 +40,6 @@ module CapitalGit
       ###
 
       def list(options={})
-        # pull!
 
         return [] if repository.empty?
 
@@ -60,7 +57,7 @@ module CapitalGit
             else
               path = entry[:name]
             end
-            items << {:entry => entry, :path => path}
+            items << {:entry => format_entry(entry), :path => path}
           end
         end
 
@@ -70,7 +67,6 @@ module CapitalGit
       def log(options={})
         limit = options[:limit] || 10
 
-        # pull!
 
         return [] if repository.empty?
 
@@ -96,7 +92,6 @@ module CapitalGit
 
       # read the contents of a file
       def read(key, options={})
-        # pull!
 
         return nil if repository.empty?
 
@@ -116,29 +111,29 @@ module CapitalGit
         resp = {}
 
         if !commit.nil?
-          commit.tree.walk_blobs do |root,entry|
-            if (root.empty? && (entry[:name] == key)) or 
-                ((root[0,@directory.length] == @directory) && (File.join(root, entry[:name]) == key))
-              blob = repository.read(entry[:oid])
-              resp[:value] = blob.data.force_encoding('UTF-8')
-              resp[:entry] = entry
-              walker = Rugged::Walker.new(repository)
-              walker.push(commit.oid)
-              walker.sorting(Rugged::SORT_DATE)
-              walker.push(commit)
-              resp[:commits] = walker.map do |commit|
-                if commit.diff(paths: [key]).size > 0
-                  {
-                    :message => commit.message,
-                    :author => commit.author,
-                    :time => commit.time,
-                    :oid => commit.oid
-                  }
-                else
-                  nil
-                end
-              end.compact.first(10)
-            end
+          index = Rugged::Index.new
+          index.read_tree(commit.tree)
+          entry = index[key]
+          if !entry.nil?
+            blob = repository.read(entry[:oid])
+            resp[:value] = blob.data.force_encoding('UTF-8')
+            resp[:entry] = format_entry(entry)
+            walker = Rugged::Walker.new(repository)
+            walker.push(commit.oid)
+            walker.sorting(Rugged::SORT_DATE)
+            walker.push(commit)
+            resp[:commits] = walker.map do |commit|
+              if commit.diff(paths: [key]).size > 0
+                {
+                  :message => commit.message,
+                  :author => commit.author,
+                  :time => commit.time,
+                  :oid => commit.oid
+                }
+              else
+                nil
+              end
+            end.compact.first(10)
           end
         end
 
@@ -153,7 +148,6 @@ module CapitalGit
       # :mode => :flat yields a flat array
       # :mode => :tree yields a nested tree
       def read_all options={mode: :flat}
-        # pull!
 
         if repository.empty?
           return options[:mode] == :tree ? {} : []
@@ -165,10 +159,6 @@ module CapitalGit
         else
           ref = repository.head
         end
-
-        # TODO: replace this tree walking silliness with index.read_tree(ref.target.tree)
-        # and optionally index.add_all to pick up un-committed local changes to the repo
-        #     but to work-with uncommmitted... should probably change so we don't clone a local
 
         if options[:mode] == :tree
           items = {}
@@ -183,8 +173,7 @@ module CapitalGit
                 path_keys = root.split("/")
                 path_keys.inject(items, :fetch)[entry[:name]] = {:path => path, :value => blob.data.force_encoding('UTF-8')}
               else
-                path = entry[:name]
-                items[entry[:name]] = {:path => path, :value => blob.data.force_encoding('UTF-8')}
+                items[entry[:name]] = {:path => entry[:name], :value => blob.data.force_encoding('UTF-8')}
               end
             elsif entry[:type] == :tree
               if root.length > 0
@@ -195,24 +184,18 @@ module CapitalGit
               end
             end
           end
-        else
+        else # flat
           items = []
-          ref.target.tree.walk_blobs do |root,entry|
-            if root.length > 0
-              path = File.join(root, entry[:name])
-            else
-              path = entry[:name]
-            end
-            blob = repository.read(entry[:oid])
-            items << {:path => path, :value => blob.data.force_encoding('UTF-8')}
-          end
+
+          index = Rugged::Index.new
+          index.read_tree(ref.target.tree)
+          items = index.map {|entry| {:path => entry[:path], :value => repository.read(entry[:oid]).data.force_encoding('UTF-8')} }
         end
 
         items
       end
 
       def diff(commit_sha, commit_sha2=nil, options={})
-        # pull!
 
         if !commit_sha2.nil? 
           # diff between :commit_sha and :next_commit_sha
@@ -256,7 +239,6 @@ module CapitalGit
       # or latest on :branch => 
       # or latest on :commit_sha =>
       def show(commit_sha = nil, options={branch: nil})
-        # pull!
 
         # find latest or specific commit
         if !options[:branch].nil? 
@@ -316,7 +298,6 @@ module CapitalGit
         }
       end
 
-      # TODO detect when nothing changed and don't commit if so
       # TODO how atomic can we make a write? so that it's not considered written
       # until something has been pushed to the remote and persisted?
       # TODO: maybe a :create_from option to specify which we are branching from?
@@ -429,6 +410,13 @@ module CapitalGit
 
       def reference(name)
         repository.references["refs/heads/#{name}"]
+      end
+
+      def format_entry(entry)
+        if entry.has_key?(:path)
+          entry[:name] = entry[:path].split("/").last
+        end
+        entry.select {|key, value| [:name, :oid].include? key }
       end
 
       def _create_commit ref, new_tree, options = {}
