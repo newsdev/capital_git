@@ -122,6 +122,19 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
     assert_equal tree, @repo.read_all(:mode => :tree)
   end
 
+  def test_read_all_sha
+    flat = [
+        {:path => "README", :value => "hey\n"}
+      ]
+    tree = {
+        "README" => {:path => "README", :value => "hey\n"}
+      }
+
+    assert_equal flat, @repo.read_all({ :sha => "8496071c1b46c854b31185ea97743be6a8774479" })
+    assert_equal flat, @repo.read_all({ :mode => :flat, :sha => "8496071c1b46c854b31185ea97743be6a8774479" })
+    assert_equal tree, @repo.read_all({ :mode => :tree, :sha => "8496071c1b46c854b31185ea97743be6a8774479" })
+  end
+
   def test_show
     refute_nil @repo.show 
 
