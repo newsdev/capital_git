@@ -34,19 +34,39 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
 
   def test_log
     assert_equal [
-        {"message"=>"subdirectories\n", "author"=>{"name"=>"Scott Chacon", "email"=>"schacon@gmail.com", "time"=>"2010-10-26 15:44:21 -0200"}, "time"=>"2010-10-26 13:44:21 -0400", "oid"=>"36060c58702ed4c2a40832c51758d5344201d89a"},
-        {"message"=>"another commit\n", "author"=>{"name"=>"Scott Chacon", "email"=>"schacon@gmail.com", "time"=>"2010-05-11 13:38:42 -0700"}, "time"=>"2010-05-11 16:38:42 -0400", "oid"=>"5b5b025afb0b4c913b4c338a42934a3863bf3644"},
-        {"message"=>"testing\n", "author"=>{"name"=>"Scott Chacon", "email"=>"schacon@gmail.com", "time"=>"2010-05-08 16:13:06 -0700"}, "time"=>"2010-05-08 19:13:06 -0400", "oid"=>"8496071c1b46c854b31185ea97743be6a8774479"}
+        {
+          "message"=>"subdirectories\n",
+          "author"=>{"name"=>"Scott Chacon", "email"=>"schacon@gmail.com", "time"=>"2010-10-26 15:44:21 -0200"},
+          "committer"=>{"name"=>"Scott Chacon", "email"=>"schacon@gmail.com", "time"=>"2010-10-26 15:44:21 -0200"},
+          "time"=>"2010-10-26 13:44:21 -0400", "oid"=>"36060c58702ed4c2a40832c51758d5344201d89a"
+        },
+        {
+          "message"=>"another commit\n",
+          "author"=>{"name"=>"Scott Chacon", "email"=>"schacon@gmail.com", "time"=>"2010-05-11 13:38:42 -0700"},
+          "committer"=>{"name"=>"Scott Chacon", "email"=>"schacon@gmail.com", "time"=>"2010-05-11 13:38:42 -0700"},
+          "time"=>"2010-05-11 16:38:42 -0400", "oid"=>"5b5b025afb0b4c913b4c338a42934a3863bf3644"
+        },
+        {
+          "message"=>"testing\n",
+          "author"=>{"name"=>"Scott Chacon", "email"=>"schacon@gmail.com", "time"=>"2010-05-08 16:13:06 -0700"},
+          "committer"=>{"name"=>"Scott Chacon", "email"=>"schacon@gmail.com", "time"=>"2010-05-08 16:13:06 -0700"},
+          "time"=>"2010-05-08 19:13:06 -0400", "oid"=>"8496071c1b46c854b31185ea97743be6a8774479"
+        }
       ], JSON.parse(@repo.log.to_json), "Git log works"
 
     # this silly json round trip is to convert symbols to strings and dates to right format
 
     assert_equal [
-        {"message"=>"subdirectories\n", "author"=>{"name"=>"Scott Chacon", "email"=>"schacon@gmail.com", "time"=>"2010-10-26 15:44:21 -0200"}, "time"=>"2010-10-26 13:44:21 -0400", "oid"=>"36060c58702ed4c2a40832c51758d5344201d89a"}
+        {
+          "message"=>"subdirectories\n",
+          "author"=>{"name"=>"Scott Chacon", "email"=>"schacon@gmail.com", "time"=>"2010-10-26 15:44:21 -0200"},
+          "committer"=>{"name"=>"Scott Chacon", "email"=>"schacon@gmail.com", "time"=>"2010-10-26 15:44:21 -0200"},
+          "time"=>"2010-10-26 13:44:21 -0400", "oid"=>"36060c58702ed4c2a40832c51758d5344201d89a"
+        }
       ], JSON.parse(@repo.log(:limit => 1).to_json), "Git log works"
 
     log_item = @repo.log.first
-    assert_equal [:message, :author, :time, :oid], log_item.keys
+    assert_equal [:message, :author, :committer, :time, :oid], log_item.keys
     assert_kind_of Time, log_item[:time]
   end
 
@@ -113,7 +133,14 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
     refute_nil @repo.show @repo.log[1][:oid]
     refute_nil @repo.show @repo.log[2][:oid]
 
-    show_val = {:oid=>"36060c58702ed4c2a40832c51758d5344201d89a", :message=>"subdirectories\n", :author=>{:name=>"Scott Chacon", :email=>"schacon@gmail.com", :time=>Time.parse("2010-10-26 15:44:21 -0200")}, :time=>Time.parse("2010-10-26 13:44:21 -0400"), :changes=>{:added=>[{:old_path=>"subdir/README", :new_path=>"subdir/README", :patch=>"diff --git a/subdir/README b/subdir/README\nnew file mode 100644\nindex 0000000..1385f26\n--- /dev/null\n+++ b/subdir/README\n@@ -0,0 +1 @@\n+hey\n"}, {:old_path=>"subdir/new.txt", :new_path=>"subdir/new.txt", :patch=>"diff --git a/subdir/new.txt b/subdir/new.txt\nnew file mode 100644\nindex 0000000..fa49b07\n--- /dev/null\n+++ b/subdir/new.txt\n@@ -0,0 +1 @@\n+new file\n"}, {:old_path=>"subdir/subdir2/README", :new_path=>"subdir/subdir2/README", :patch=>"diff --git a/subdir/subdir2/README b/subdir/subdir2/README\nnew file mode 100644\nindex 0000000..1385f26\n--- /dev/null\n+++ b/subdir/subdir2/README\n@@ -0,0 +1 @@\n+hey\n"}, {:old_path=>"subdir/subdir2/new.txt", :new_path=>"subdir/subdir2/new.txt", :patch=>"diff --git a/subdir/subdir2/new.txt b/subdir/subdir2/new.txt\nnew file mode 100644\nindex 0000000..fa49b07\n--- /dev/null\n+++ b/subdir/subdir2/new.txt\n@@ -0,0 +1 @@\n+new file\n"}]}}
+    show_val = {
+      :oid=>"36060c58702ed4c2a40832c51758d5344201d89a",
+      :message=>"subdirectories\n",
+      :author=>{:name=>"Scott Chacon", :email=>"schacon@gmail.com", :time=>Time.parse("2010-10-26 15:44:21 -0200")},
+      :committer=>{:name=>"Scott Chacon", :email=>"schacon@gmail.com", :time=>Time.parse("2010-10-26 15:44:21 -0200")},
+      :time=>Time.parse("2010-10-26 13:44:21 -0400"),
+      :changes=>{:added=>[{:old_path=>"subdir/README", :new_path=>"subdir/README", :patch=>"diff --git a/subdir/README b/subdir/README\nnew file mode 100644\nindex 0000000..1385f26\n--- /dev/null\n+++ b/subdir/README\n@@ -0,0 +1 @@\n+hey\n"},{:old_path=>"subdir/new.txt", :new_path=>"subdir/new.txt", :patch=>"diff --git a/subdir/new.txt b/subdir/new.txt\nnew file mode 100644\nindex 0000000..fa49b07\n--- /dev/null\n+++ b/subdir/new.txt\n@@ -0,0 +1 @@\n+new file\n"}, {:old_path=>"subdir/subdir2/README", :new_path=>"subdir/subdir2/README", :patch=>"diff --git a/subdir/subdir2/README b/subdir/subdir2/README\nnew file mode 100644\nindex 0000000..1385f26\n--- /dev/null\n+++ b/subdir/subdir2/README\n@@ -0,0 +1 @@\n+hey\n"}, {:old_path=>"subdir/subdir2/new.txt", :new_path=>"subdir/subdir2/new.txt", :patch=>"diff --git a/subdir/subdir2/new.txt b/subdir/subdir2/new.txt\nnew file mode 100644\nindex 0000000..fa49b07\n--- /dev/null\n+++ b/subdir/subdir2/new.txt\n@@ -0,0 +1 @@\n+new file\n"}]}
+    }
 
     assert_equal show_val, @repo.show
   end

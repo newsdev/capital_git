@@ -84,6 +84,7 @@ module CapitalGit
           {
             :message => commit.message,
             :author => commit.author,
+            :committer => commit.committer,
             :time => commit.time,
             :oid => commit.oid
           }
@@ -127,6 +128,7 @@ module CapitalGit
                 {
                   :message => commit.message,
                   :author => commit.author,
+                  :committer => commit.committer,
                   :time => commit.time,
                   :oid => commit.oid
                 }
@@ -293,6 +295,7 @@ module CapitalGit
           :oid => commit.oid,
           :message => commit.message,
           :author => commit.author,
+          :committer => commit.committer,
           :time => commit.time,
           :changes => changes
         }
