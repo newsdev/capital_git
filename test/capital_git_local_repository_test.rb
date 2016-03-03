@@ -274,6 +274,49 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
     assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
   end
 
+  def test_write_author
+    author = {
+        :name=>"Test A. Author", :email=>"author@example.com"
+      }
+    assert @repo.write("test-create-new-file","b", :message => "test_write", :author => author), "write succeeds with an author"
+    
+    assert_equal "b", @repo.read("test-create-new-file")[:value], "Write to new file"
+
+    assert_equal author[:name], @repo.read("test-create-new-file")[:commits].first[:author][:name], "Author is set"
+    assert_equal author[:email], @repo.read("test-create-new-file")[:commits].first[:author][:email], "Author is set"
+    refute_equal author[:name], @repo.read("test-create-new-file")[:commits].first[:committer][:name], "Committer was not set to author"
+    refute_equal author[:email], @repo.read("test-create-new-file")[:commits].first[:committer][:email], "Committer was not set to author"
+    assert_equal author[:name], @repo.log.first[:author][:name], "Author is set"
+    assert_equal author[:email], @repo.log.first[:author][:email], "Author is set"
+    refute_equal author[:name], @repo.log.first[:committer][:name], "Committer was not set to author"
+    refute_equal author[:email], @repo.log.first[:committer][:email], "Committer was not set to author"
+
+    assert_equal [:name, :email, :time], @repo.read("test-create-new-file")[:commits].first[:author].keys
+    assert @repo.read("test-create-new-file")[:commits].first[:author][:time].is_a?(Time), "commit author has a Time"
+
+    refute_equal author[:name], @repo.read("README")[:commits].first[:committer][:name], "Doesn't affect log for a different file"
+    refute_equal author[:email], @repo.read("README")[:commits].first[:committer][:email], "Doesn't affect log for a different file"
+  end
+
+  def test_write_many_author
+    author = {
+      :name=>"Prolific A. Author", :email=>"prolific@example.com"
+    }
+
+    # new.txt
+    assert @repo.write_many([
+      {:path => "test-create-new-file", :value => "abc"},
+      {:path => "README", :value => "hello world\n"}
+      ], :message => "test_write", :author => author), "write_many with author option succeeds"
+
+    assert_equal author[:name], @repo.read("test-create-new-file")[:commits].first[:author][:name], "Author is set"
+    assert_equal author[:email], @repo.read("test-create-new-file")[:commits].first[:author][:email], "Author is set"
+    assert_equal author[:name], @repo.read("README")[:commits].first[:author][:name], "Author is set"
+    assert_equal author[:email], @repo.read("README")[:commits].first[:author][:email], "Author is set"
+    refute_equal author[:name], @repo.read("new.txt")[:commits].first[:author][:name], "Author is not updated for other file"
+    refute_equal author[:email], @repo.read("new.txt")[:commits].first[:author][:email], "Author is not updated for other file"
+  end
+
   def test_clear
     skip("Not implemented and unclear if it should be implemented")
   end
