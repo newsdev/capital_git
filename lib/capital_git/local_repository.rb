@@ -43,14 +43,10 @@ module CapitalGit
 
         return [] if repository.empty?
 
-        if options[:branch]
-          ref = reference(options[:branch])
-        else
-          ref = repository.head
-        end
+        target = _get_commit(options)
 
         items = []
-        ref.target.tree.walk_blobs do |root,entry|
+        target.tree.walk_blobs do |root,entry|
           if root[0,@directory.length] == @directory
             if root.length > 0
               path = File.join(root, entry[:name])
@@ -70,16 +66,12 @@ module CapitalGit
 
         return [] if repository.empty?
 
-        if options[:branch]
-          ref = reference(options[:branch])
-        else
-          ref = repository.head
-        end
+        target = _get_commit(options)
 
         walker = Rugged::Walker.new(repository)
-        walker.push(ref.target.oid)
+        walker.push(target.oid)
         walker.sorting(Rugged::SORT_DATE)
-        walker.push(ref.target)
+        walker.push(target)
         walker.map do |commit|
           {
             :message => commit.message,
@@ -96,18 +88,7 @@ module CapitalGit
 
         return nil if repository.empty?
 
-        begin
-          if options[:branch]
-            commit = reference(options[:branch]).nil? ? nil : reference(options[:branch]).target
-            return nil if !commit
-          elsif options[:sha]
-            commit = repository.lookup(options[:sha])
-          else
-            commit = repository.head.target
-          end
-        rescue Rugged::OdbError
-          commit = nil
-        end
+        commit = _get_commit(options)
 
         resp = {}
 
@@ -155,16 +136,12 @@ module CapitalGit
           return options[:mode] == :tree ? {} : []
         end
 
-        if options[:branch]
-          ref = reference(options[:branch])
-          return nil if !ref
-        else
-          ref = repository.head
-        end
+        target = _get_commit(options)
+        return nil if target.nil?
 
         if options[:mode] == :tree
           items = {}
-          ref.target.tree.walk(:preorder) do |root,entry|
+          target.tree.walk(:preorder) do |root,entry|
             if entry[:type] == :blob
               blob = repository.read(entry[:oid])
               if root.length > 0
@@ -190,7 +167,7 @@ module CapitalGit
           items = []
 
           index = Rugged::Index.new
-          index.read_tree(ref.target.tree)
+          index.read_tree(target.tree)
           items = index.map {|entry| {:path => entry[:path], :value => repository.read(entry[:oid]).data.force_encoding('UTF-8')} }
         end
 
@@ -244,14 +221,13 @@ module CapitalGit
 
         # find latest or specific commit
         if !options[:branch].nil? 
-          ref = reference(options[:branch])
-          return nil if !ref
-          commit = ref.target
+          commit = _get_commit(options)
+          return nil if commit.nil?
         elsif !commit_sha.nil?
-          commit = repository.lookup(commit_sha) 
+          commit = _get_commit(commit_sha)
+          return nil if commit.nil?
         else
-          ref = repository.head
-          commit = ref.target
+          commit = repository.head.target
         end
 
         if !commit.parents[0].nil?
@@ -313,7 +289,7 @@ module CapitalGit
           ref = "refs/heads/#{new_branch}"
         else
           if options[:branch]
-            ref = reference(options[:branch])
+            ref = repository.references["refs/heads/#{options[:branch]}"]
             if !ref
               ref = repository.references.create("refs/heads/#{options[:branch]}", repository.head.target.oid)
             end
@@ -347,7 +323,7 @@ module CapitalGit
           ref = "refs/heads/#{new_branch}"
         else
           if options[:branch]
-            ref = reference(options[:branch])
+            ref = repository.references["refs/heads/#{options[:branch]}"]
             if !ref
               ref = repository.references.create("refs/heads/#{options[:branch]}", repository.head.target.oid)
             end
@@ -375,7 +351,7 @@ module CapitalGit
         return false if repository.empty?
 
         if options[:branch]
-          ref = reference(options[:branch])
+          ref = repository.references["refs/heads/#{options[:branch]}"]
           if !ref
             ref = repository.references.create("refs/heads/#{options[:branch]}", repository.head.target.oid)
           end
@@ -411,15 +387,51 @@ module CapitalGit
       # https://git-scm.com/book/en/v2/Git-Internals-Git-References
       # http://grimoire.ca/git/theory-and-practice/refs-and-names
 
-      def reference(name)
-        repository.references["refs/heads/#{name}"]
-      end
-
       def format_entry(entry)
         if entry.has_key?(:path)
           entry[:name] = entry[:path].split("/").last
         end
         entry.select {|key, value| [:name, :oid].include? key }
+      end
+
+
+      # returns a commit object based on a passed
+      # - options hash specifying :branch or :sha
+      # - string branch name
+      # - string commit sha
+      # - if an options hash without either :branch or :sha, or neither hash nor string is passed
+      #   return the default, repository.head
+      # - if the requested object can't be found, return nil
+      def _get_commit to_resolve=nil
+        if to_resolve.is_a? Hash
+          if to_resolve[:branch]
+            ref = repository.branches[to_resolve[:branch]]
+            return nil if ref.nil?
+            return ref.target
+          elsif to_resolve[:sha]
+            begin
+              commit = repository.lookup(to_resolve[:sha])
+              return nil if !commit.is_a?(Rugged::Commit)
+              return commit
+            rescue Rugged::OdbError
+              return nil
+            end
+          else
+            return repository.head.target
+          end
+        elsif to_resolve.is_a? String
+          ref = repository.branches[to_resolve]
+          return ref.target if !ref.nil?
+          begin
+            commit = repository.lookup(to_resolve)
+            return nil if !commit.is_a?(Rugged::Commit)
+            return commit
+          rescue Rugged::OdbError
+            return nil
+          end
+        else
+          return repository.head.target
+        end
       end
 
       def _create_commit ref, new_tree, options = {}
