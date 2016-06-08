@@ -10,6 +10,21 @@ class CapitalGitBranchesTest < Minitest::Test
     @repo = @database.connect("#{@fixtures_path}/testrepo.git")
   end
 
+  def test_list_branches
+    branches = @repo.branches
+    
+    assert_equal 2, branches.count
+    assert_equal ["master", "packed"], branches.map {|b| b[:name] }
+
+    assert_equal JSON.parse('[{"name":"master","commit":{"oid":"36060c58702ed4c2a40832c51758d5344201d89a","message":"subdirectories\n","author":{"name":"Scott Chacon","email":"schacon@gmail.com","time":"2010-10-26 15:44:21 -0200"},"committer":{"name":"Scott Chacon","email":"schacon@gmail.com","time":"2010-10-26 15:44:21 -0200"},"time":"2010-10-26 13:44:21 -0400"},"head?":true}, {"name":"packed","commit":{"oid":"41bc8c69075bbdb46c5c6f0566cc8cc5b46e8bd9","message":"packed commit two\n","author":{"name":"Scott Chacon","email":"schacon@gmail.com","time":"2010-05-11 13:40:41 -0700"},"committer":{"name":"Scott Chacon","email":"schacon@gmail.com","time":"2010-05-11 13:40:41 -0700"},"time":"2010-05-11 16:40:41 -0400"},"head?":false}]'),
+      JSON.parse(branches.to_json)
+
+    # assert_equal [
+    #    {:name=>"master", :commit=>{:oid=>"36060c58702ed4c2a40832c51758d5344201d89a", :message=>"subdirectories\n", :author=>{:name=>"Scott Chacon", :email=>"schacon@gmail.com", :time=>2010-10-26 15:44:21 -0200}, :committer=>{:name=>"Scott Chacon", :email=>"schacon@gmail.com", :time=>2010-10-26 15:44:21 -0200}, :time=>2010-10-26 13:44:21 -0400}, :head?=>true}, {:name=>"packed", :commit=>{:oid=>"41bc8c69075bbdb46c5c6f0566cc8cc5b46e8bd9", :message=>"packed commit two\n", :author=>{:name=>"Scott Chacon", :email=>"schacon@gmail.com", :time=>2010-05-11 13:40:41 -0700}, :committer=>{:name=>"Scott Chacon", :email=>"schacon@gmail.com", :time=>2010-05-11 13:40:41 -0700}, :time=>2010-05-11 16:40:41 -0400}, :head?=>false}
+    #   ], branches
+
+  end
+
   def test_list_another_branch
     items = @repo.list(branch: "packed")
     assert_equal 2, items.length, "2 items on branch 'packed'"

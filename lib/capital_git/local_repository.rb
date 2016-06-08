@@ -35,6 +35,23 @@ module CapitalGit
         File.join(@parent.database.local_path, @name)
       end
 
+      def branches
+        # repository.branches.select {|b| !b.name.match(/^origin\//) }.map do |b|
+        repository.branches.select {|b| b.branch? }.map do |b|
+          {
+            :name => b.name,
+            :commit => {
+              :oid => b.target.oid,
+              :message => b.target.message,
+              :author => b.target.author,
+              :committer => b.target.committer,
+              :time => b.target.time
+            },
+            :head? => b.head?
+          }
+        end
+      end
+
       ###
       # read / write methods on local repo
       ###
@@ -482,7 +499,7 @@ module CapitalGit
     attr_reader :name, :url, :default_branch
 
     PROXIED_HELPER_METHODS = %w{local_path}.map(&:to_sym)
-    PROXIED_READ_METHODS = %w{list log read read_all diff show}.map(&:to_sym)
+    PROXIED_READ_METHODS = %w{branches list log read read_all diff show}.map(&:to_sym)
     PROXIED_WRITE_METHODS = %w{write write_many delete}.map(&:to_sym)
 
     def method_missing(method, *args, &block)
