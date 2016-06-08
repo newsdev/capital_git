@@ -66,7 +66,7 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
       ], JSON.parse(@repo.log(:limit => 1).to_json), "Git log works"
 
     log_item = @repo.log.first
-    assert_equal [:message, :author, :committer, :time, :oid], log_item.keys
+    assert_equal [:message, :author, :committer, :time, :oid].sort, log_item.keys.sort
     assert_kind_of Time, log_item[:time]
   end
 

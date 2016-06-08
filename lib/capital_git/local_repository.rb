@@ -36,17 +36,12 @@ module CapitalGit
       end
 
       def branches
-        # repository.branches.select {|b| !b.name.match(/^origin\//) }.map do |b|
+        # the branches BranchCollection contains remote branches,
+        # while the .branch? method only returns true for local branches
         repository.branches.select {|b| b.branch? }.map do |b|
           {
             :name => b.name,
-            :commit => {
-              :oid => b.target.oid,
-              :message => b.target.message,
-              :author => b.target.author,
-              :committer => b.target.committer,
-              :time => b.target.time
-            },
+            :commit => format_commit(b.target),
             :head? => b.head?
           }
         end
@@ -90,13 +85,7 @@ module CapitalGit
         walker.sorting(Rugged::SORT_DATE)
         walker.push(target)
         walker.map do |commit|
-          {
-            :message => commit.message,
-            :author => commit.author,
-            :committer => commit.committer,
-            :time => commit.time,
-            :oid => commit.oid
-          }
+          format_commit(commit)
         end.compact.first(limit)
       end
 
@@ -123,13 +112,7 @@ module CapitalGit
             walker.push(commit)
             resp[:commits] = walker.map do |commit|
               if commit.diff(paths: [key]).size > 0
-                {
-                  :message => commit.message,
-                  :author => commit.author,
-                  :committer => commit.committer,
-                  :time => commit.time,
-                  :oid => commit.oid
-                }
+                format_commit(commit)
               else
                 nil
               end
@@ -284,14 +267,7 @@ module CapitalGit
           memo
         end
 
-        {
-          :oid => commit.oid,
-          :message => commit.message,
-          :author => commit.author,
-          :committer => commit.committer,
-          :time => commit.time,
-          :changes => changes
-        }
+        format_commit(commit).merge(:changes => changes)
       end
 
       # TODO how atomic can we make a write? so that it's not considered written
@@ -409,6 +385,16 @@ module CapitalGit
           entry[:name] = entry[:path].split("/").last
         end
         entry.select {|key, value| [:name, :oid].include? key }
+      end
+
+      def format_commit(commit)
+        {
+          :oid => commit.oid,
+          :message => commit.message,
+          :author => commit.author,
+          :committer => commit.committer,
+          :time => commit.time
+        }
       end
 
 
