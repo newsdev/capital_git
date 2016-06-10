@@ -217,6 +217,21 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
     assert_equal @bare_repo.head.target.oid, @repo.repository.head.target.oid
   end
 
+  def test_write_encoding
+    assert @repo.write("README", "a curly quote’s bug", :message => "Update readme’s contents")
+    assert_equal "a curly quote’s bug", @repo.read("README")[:value], "Write to existing file"
+    assert_equal @repo.show[:message], "Update readme’s contents", "Write has the right commit message with curly quote"
+
+    assert_equal(
+        JSON.parse(@repo.show.to_json)["changes"]["modified"][0]["patch"],
+        "diff --git a/README b/README\nindex 1385f26..85eb8bc 100644\n--- a/README\n+++ b/README\n@@ -1 +1 @@\n-hey\n+a curly quote’s bug\n\\ No newline at end of file\n",
+        "patch from show can be output as UTF-8"
+      )
+
+    assert_equal @repo.show[:changes][:modified][0][:old_path], "README"
+    assert_equal @repo.show[:changes][:modified][0][:new_path], "README"
+  end
+
   def test_write_many
     assert @repo.write_many([
       {:path => "test-create-new-file", :value => "b"},
