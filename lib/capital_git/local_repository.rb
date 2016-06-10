@@ -262,10 +262,12 @@ module CapitalGit
           memo[dlt.status] << {
             :old_path => dlt.old_file[:path],
             :new_path => dlt.new_file[:path],
-            :patch => patch.to_s
+            :patch => patch.to_s.force_encoding("UTF-8")
           }
           memo
         end
+
+        # hm, maybe insight from here https://gitlab.com/gitlab-org/gitlab_git/blob/master/lib/gitlab_git/encoding_helper.rb
 
         format_commit(commit).merge(:changes => changes)
       end
