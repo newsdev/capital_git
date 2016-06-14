@@ -179,8 +179,8 @@ module CapitalGit
           right = repository.lookup(commit_sha2)
         else 
           # passed one arg, diff between HEAD & :commit_sha 
-          left = repository.head.target
-          right = repository.lookup(commit_sha)
+          left = repository.lookup(commit_sha)
+          right = repository.head.target
         end 
 
         diff_opts = {}
