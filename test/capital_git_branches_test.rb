@@ -16,13 +16,18 @@ class CapitalGitBranchesTest < Minitest::Test
     assert_equal 2, branches.count
     assert_equal ["master", "packed"], branches.map {|b| b[:name] }
 
-    assert_equal JSON.parse('[{"name":"master","commit":{"oid":"36060c58702ed4c2a40832c51758d5344201d89a","message":"subdirectories\n","author":{"name":"Scott Chacon","email":"schacon@gmail.com","time":"2010-10-26 15:44:21 -0200"},"committer":{"name":"Scott Chacon","email":"schacon@gmail.com","time":"2010-10-26 15:44:21 -0200"},"time":"2010-10-26 13:44:21 -0400"},"head?":true}, {"name":"packed","commit":{"oid":"41bc8c69075bbdb46c5c6f0566cc8cc5b46e8bd9","message":"packed commit two\n","author":{"name":"Scott Chacon","email":"schacon@gmail.com","time":"2010-05-11 13:40:41 -0700"},"committer":{"name":"Scott Chacon","email":"schacon@gmail.com","time":"2010-05-11 13:40:41 -0700"},"time":"2010-05-11 16:40:41 -0400"},"head?":false}]'),
+    assert_equal JSON.parse('[{"name":"master","commit":{"commit":"36060c58702ed4c2a40832c51758d5344201d89a","message":"subdirectories\n","author":{"name":"Scott Chacon","email":"schacon@gmail.com","time":"2010-10-26 15:44:21 -0200"},"committer":{"name":"Scott Chacon","email":"schacon@gmail.com","time":"2010-10-26 15:44:21 -0200"},"time":"2010-10-26 13:44:21 -0400"},"head?":true}, {"name":"packed","commit":{"commit":"41bc8c69075bbdb46c5c6f0566cc8cc5b46e8bd9","message":"packed commit two\n","author":{"name":"Scott Chacon","email":"schacon@gmail.com","time":"2010-05-11 13:40:41 -0700"},"committer":{"name":"Scott Chacon","email":"schacon@gmail.com","time":"2010-05-11 13:40:41 -0700"},"time":"2010-05-11 16:40:41 -0400"},"head?":false}]'),
       JSON.parse(branches.to_json)
+  end
 
-    # assert_equal [
-    #    {:name=>"master", :commit=>{:oid=>"36060c58702ed4c2a40832c51758d5344201d89a", :message=>"subdirectories\n", :author=>{:name=>"Scott Chacon", :email=>"schacon@gmail.com", :time=>2010-10-26 15:44:21 -0200}, :committer=>{:name=>"Scott Chacon", :email=>"schacon@gmail.com", :time=>2010-10-26 15:44:21 -0200}, :time=>2010-10-26 13:44:21 -0400}, :head?=>true}, {:name=>"packed", :commit=>{:oid=>"41bc8c69075bbdb46c5c6f0566cc8cc5b46e8bd9", :message=>"packed commit two\n", :author=>{:name=>"Scott Chacon", :email=>"schacon@gmail.com", :time=>2010-05-11 13:40:41 -0700}, :committer=>{:name=>"Scott Chacon", :email=>"schacon@gmail.com", :time=>2010-05-11 13:40:41 -0700}, :time=>2010-05-11 16:40:41 -0400}, :head?=>false}
-    #   ], branches
+  def test_branches_with_base
+    branches = @repo.branches("master")
 
+    assert_equal ["master", "packed"], branches.map {|b| b[:name] }
+    # assert_equal 1, branches.map {|b| b[:stats]}.compact.count
+    assert_equal [0,8], branches.map {|b| b[:diff][:files_changed]}
+    
+    assert_equal 2, branches.count
   end
 
   def test_list_another_branch

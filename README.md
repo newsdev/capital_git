@@ -59,10 +59,26 @@ item[:value]
 # along with a :changes attribute with arrays of :added, :deleted, :renamed, :modified, etc objects
 
 # simple listing of all paths that changed at HEAD
-@repo.show[:changes].values.flatten.map {|o| o[:new_path]}
+@repo.show[:diff][:changes].values.flatten.map {|o| o[:new_path]}
 
 # text diffs of each modified (but not added/deleted) file in the latest commit on master
-@repo.show(:branch => "master")[:changes][:modified].map {|o| o[:patch]}
+@repo.show(:branch => "master")[:diff][:changes][:modified].map {|o| o[:patch]}
+
+# diff between two commits
+@repo.diff(COMMIT_SHA_1, COMMIT_SHA_2)
+        {
+          :commits => [COMMIT_SHA_1, COMMIT_SHA_2],
+          :files_changed => diff.stat[0],
+          :additions => diff.stat[1],
+          :deletions => diff.stat[2],
+          :changes => changes # changes hash
+        }
+
+# listing of branches
+@repo.branches
+
+# listing of branches, with difference from a specified base branch
+@repo.branches("master")
 
 
 # each of these methods that read the repository will pull from the remote

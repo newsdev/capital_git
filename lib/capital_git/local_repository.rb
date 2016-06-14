@@ -35,17 +35,6 @@ module CapitalGit
         File.join(@parent.database.local_path, @name)
       end
 
-      def branches
-        # the branches BranchCollection contains remote branches,
-        # while the .branch? method only returns true for local branches
-        repository.branches.select {|b| b.branch? }.map do |b|
-          {
-            :name => b.name,
-            :commit => format_commit(b.target),
-            :head? => b.head?
-          }
-        end
-      end
 
       ###
       # read / write methods on local repo
@@ -174,6 +163,14 @@ module CapitalGit
         items
       end
 
+      # https://git-scm.com/docs/git-diff
+      # http://www.gnu.org/software/diffutils/manual/diffutils.html#Comparison
+      # https://idnotfound.wordpress.com/2009/05/09/word-by-word-diffs-in-git/
+      # https://www.kernel.org/pub/software/scm/git/docs/gitattributes.html
+      # http://stackoverflow.com/questions/2013091/coloured-git-diff-to-html
+      # https://gitlab.com/gitlab-org/gitlab_git/blob/master/lib/gitlab_git/encoding_helper.rb
+      # https://diff2html.rtfpessoa.xyz/
+
       def diff(commit_sha, commit_sha2=nil, options={})
 
         if !commit_sha2.nil? 
@@ -194,22 +191,15 @@ module CapitalGit
         diff = repository.diff(left, right, diff_opts) 
         diff.find_similar! # calculate which are renames instead of delete/adds
 
-        changes = diff.each_patch.reduce({}) do |memo, patch|
-          dlt = patch.delta
-          if !memo.has_key? dlt.status
-            memo[dlt.status] = []
-          end
-          memo[dlt.status] << {
-            :old_path => dlt.old_file[:path],
-            :new_path => dlt.new_file[:path],
-            :patch => patch.to_s.force_encoding('UTF-8')
-          }
-          memo
-        end
+        # changes is each file's patch
+        changes = _get_changes(diff)
+
 
         {
-          :left => left.oid,
-          :right => right.oid, 
+          :commits => [left.oid, right.oid],
+          :files_changed => diff.stat[0],
+          :additions => diff.stat[1],
+          :deletions => diff.stat[2],
           :changes => changes
         }
       end
@@ -231,45 +221,58 @@ module CapitalGit
         end
 
         if !commit.parents[0].nil?
-          diff = commit.parents[0].diff(commit)
+          parent_commit = commit.parents[0]
+          diff = parent_commit.diff(commit)
         else
           diff = Rugged::Tree.diff(repository,nil,commit)
         end
         diff.find_similar! # calculate which are renames instead of delete/adds
 
-        # diff.each_delta
-        # dlt = diff.each_delta.first
-        # @repo.repository.read(dlt.new_file[:oid]).data.force_encoding("UTF-8")
+        changes = _get_changes(diff)
 
-        # # patch from diff
-        # patch = diff.each_patch.first
+        format_commit(commit).merge(:diff => {
+          # :stats => diff.stat,
+          :files_changed => diff.stat[0],
+          :additions => diff.stat[1],
+          :deletions => diff.stat[2],
+          :changes => changes
+          })
+      end
 
-        # # patch from dlt
-        # Rugged::Patch.from_strings(
-        #     @repo.repository.read(dlt.new_file[:oid]).data.force_encoding("UTF-8"),
-        #     @repo.repository.read(dlt.new_file[:oid]).data.force_encoding("UTF-8")
-        #   )
+      def branches base=nil
+        if !base.nil?
+          base_commit = repository.branches[base].target
 
-        # patch.hunks.first.lines
-
-        # changed_paths = diff.each_delta.map {|d| [d.old_file[:path], d.new_file[:path]]}.flatten.uniq
-
-        changes = diff.each_patch.reduce({}) do |memo, patch|
-          dlt = patch.delta
-          if !memo.has_key? dlt.status
-            memo[dlt.status] = []
+          # attempt to return how different each branch is from `base`
+          return repository.branches.select {|b| b.branch? }.map do |b|
+            commit = b.target
+            diff = repository.diff(base_commit, commit, {})
+            changes = _get_changes(diff)
+            {
+              :name => b.name,
+              :head? => b.head?,
+              :base? => base_commit == commit,
+              :commit => format_commit(b.target),
+              :diff => {
+                :files_changed => diff.stat[0],
+                :additions => diff.stat[1],
+                :deletions => diff.stat[2],
+                :changes => changes
+              }
+            }
           end
-          memo[dlt.status] << {
-            :old_path => dlt.old_file[:path],
-            :new_path => dlt.new_file[:path],
-            :patch => patch.to_s.force_encoding("UTF-8")
-          }
-          memo
+        else
+
+          # the branches BranchCollection contains remote branches,
+          # while the .branch? method only returns true for local branches
+          return repository.branches.select {|b| b.branch? }.map do |b|
+            {
+              :name => b.name,
+              :head? => b.head?,
+              :commit => format_commit(b.target)
+            }
+          end
         end
-
-        # hm, maybe insight from here https://gitlab.com/gitlab-org/gitlab_git/blob/master/lib/gitlab_git/encoding_helper.rb
-
-        format_commit(commit).merge(:changes => changes)
       end
 
       # TODO how atomic can we make a write? so that it's not considered written
@@ -391,7 +394,7 @@ module CapitalGit
 
       def format_commit(commit)
         {
-          :oid => commit.oid,
+          :commit => commit.oid,
           :message => commit.message,
           :author => commit.author,
           :committer => commit.committer,
@@ -468,6 +471,45 @@ module CapitalGit
           return false
         end
       end
+
+      # change summary without line-by-line patch
+      # diff.each_delta
+      # dlt = diff.each_delta.first
+      # new file
+      # @repo.repository.read(dlt.new_file[:oid]).data.force_encoding("UTF-8")
+
+      # changed_paths = diff.each_delta.map {|d| [d.old_file[:path], d.new_file[:path]]}.flatten.uniq
+
+      # diff.stat
+      # [ files/additions/deletions ]
+
+      # TK?: allow a version of changes keyed off of path
+      # instead of change status
+
+      def _get_changes diff
+        diff.each_patch.reduce({}) do |memo, patch|
+
+          # patch has lines
+          # patch.lines
+          # patch.each_hunk
+          # http://www.rubydoc.info/gems/rugged/Rugged/Patch
+          # p.stat [ additions/deletions ]
+
+          dlt = patch.delta
+          if !memo.has_key? dlt.status
+            memo[dlt.status] = []
+          end
+          memo[dlt.status] << {
+            :old_path => dlt.old_file[:path],
+            :new_path => dlt.new_file[:path],
+            :patch => patch.to_s.force_encoding('UTF-8'),
+            :additions => patch.additions,
+            :deletions => patch.deletions,
+          }
+          memo
+        end
+      end
+
     end
 
 
