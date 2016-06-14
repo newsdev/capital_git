@@ -21,7 +21,7 @@ class CapitalGitBranchesTest < Minitest::Test
   end
 
   def test_branches_with_base
-    branches = @repo.branches("master")
+    branches = @repo.branches(base: "master")
 
     assert_equal ["master", "packed"], branches.map {|b| b[:name] }
     # assert_equal 1, branches.map {|b| b[:stats]}.compact.count

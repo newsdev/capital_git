@@ -171,7 +171,7 @@ module CapitalGit
       # https://gitlab.com/gitlab-org/gitlab_git/blob/master/lib/gitlab_git/encoding_helper.rb
       # https://diff2html.rtfpessoa.xyz/
 
-      def diff(commit_sha, commit_sha2=nil, options={})
+      def diff(commit_sha, commit_sha2=nil, options={paths: nil})
 
         if !commit_sha2.nil? 
           # diff between :commit_sha and :next_commit_sha
@@ -239,14 +239,30 @@ module CapitalGit
           })
       end
 
-      def branches base=nil
-        if !base.nil?
-          base_commit = repository.branches[base].target
+      def branches options={base: nil, paths: nil}
+        if options[:base].nil?
+          # the branches BranchCollection contains remote branches,
+          # while the .branch? method only returns true for local branches
+          return repository.branches.select {|b| b.branch? }.map do |b|
+            {
+              :name => b.name,
+              :head? => b.head?,
+              :commit => format_commit(b.target)
+            }
+          end
+        else
+          base_commit = repository.branches[options[:base]].target
 
-          # attempt to return how different each branch is from `base`
+          diff_opts = {}
+          if options[:paths] 
+            diff_opts = {:paths => options[:paths]}
+          end
+
+          # attempt to return how different each branch is from `options[:base]`
           return repository.branches.select {|b| b.branch? }.map do |b|
             commit = b.target
-            diff = repository.diff(base_commit, commit, {})
+
+            diff = repository.diff(base_commit, commit, diff_opts)
             changes = _get_changes(diff)
             {
               :name => b.name,
@@ -259,17 +275,6 @@ module CapitalGit
                 :deletions => diff.stat[2],
                 :changes => changes
               }
-            }
-          end
-        else
-
-          # the branches BranchCollection contains remote branches,
-          # while the .branch? method only returns true for local branches
-          return repository.branches.select {|b| b.branch? }.map do |b|
-            {
-              :name => b.name,
-              :head? => b.head?,
-              :commit => format_commit(b.target)
             }
           end
         end
