@@ -184,6 +184,13 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
 
   end
 
+  def test_diff_branches
+    diff_val = {:commits=>["41bc8c69075bbdb46c5c6f0566cc8cc5b46e8bd9", "36060c58702ed4c2a40832c51758d5344201d89a"], :files_changed=>8, :additions=>6, :deletions=>2, :changes=>{:added=>[{:old_path=>"README", :new_path=>"README", :patch=>"diff --git a/README b/README\nnew file mode 100644\nindex 0000000..1385f26\n--- /dev/null\n+++ b/README\n@@ -0,0 +1 @@\n+hey\n", :additions=>1, :deletions=>0}, {:old_path=>"new.txt", :new_path=>"new.txt", :patch=>"diff --git a/new.txt b/new.txt\nnew file mode 100644\nindex 0000000..fa49b07\n--- /dev/null\n+++ b/new.txt\n@@ -0,0 +1 @@\n+new file\n", :additions=>1, :deletions=>0}, {:old_path=>"subdir/README", :new_path=>"subdir/README", :patch=>"diff --git a/subdir/README b/subdir/README\nnew file mode 100644\nindex 0000000..1385f26\n--- /dev/null\n+++ b/subdir/README\n@@ -0,0 +1 @@\n+hey\n", :additions=>1, :deletions=>0}, {:old_path=>"subdir/new.txt", :new_path=>"subdir/new.txt", :patch=>"diff --git a/subdir/new.txt b/subdir/new.txt\nnew file mode 100644\nindex 0000000..fa49b07\n--- /dev/null\n+++ b/subdir/new.txt\n@@ -0,0 +1 @@\n+new file\n", :additions=>1, :deletions=>0}, {:old_path=>"subdir/subdir2/README", :new_path=>"subdir/subdir2/README", :patch=>"diff --git a/subdir/subdir2/README b/subdir/subdir2/README\nnew file mode 100644\nindex 0000000..1385f26\n--- /dev/null\n+++ b/subdir/subdir2/README\n@@ -0,0 +1 @@\n+hey\n", :additions=>1, :deletions=>0}, {:old_path=>"subdir/subdir2/new.txt", :new_path=>"subdir/subdir2/new.txt", :patch=>"diff --git a/subdir/subdir2/new.txt b/subdir/subdir2/new.txt\nnew file mode 100644\nindex 0000000..fa49b07\n--- /dev/null\n+++ b/subdir/subdir2/new.txt\n@@ -0,0 +1 @@\n+new file\n", :additions=>1, :deletions=>0}], :deleted=>[{:old_path=>"another.txt", :new_path=>"another.txt", :patch=>"diff --git a/another.txt b/another.txt\ndeleted file mode 100644\nindex 7c3f1a8..0000000\n--- a/another.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-yet another file\n", :additions=>0, :deletions=>1}, {:old_path=>"second.txt", :new_path=>"second.txt", :patch=>"diff --git a/second.txt b/second.txt\ndeleted file mode 100644\nindex bb61d81..0000000\n--- a/second.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-what file?\n", :additions=>0, :deletions=>1}]}}
+    assert_equal diff_val, @repo.diff("packed")
+
+    assert_equal diff_val, @repo.diff("packed", "master")
+  end
+
 
   def teardown
     FileUtils.remove_entry_secure(@tmp_path)

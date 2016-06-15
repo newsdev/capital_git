@@ -171,15 +171,14 @@ module CapitalGit
       # https://gitlab.com/gitlab-org/gitlab_git/blob/master/lib/gitlab_git/encoding_helper.rb
       # https://diff2html.rtfpessoa.xyz/
 
-      def diff(commit_sha, commit_sha2=nil, options={paths: nil})
+      def diff(ref, ref2=nil, options={paths: nil})
 
-        if !commit_sha2.nil? 
-          # diff between :commit_sha and :next_commit_sha
-          left = repository.lookup(commit_sha)
-          right = repository.lookup(commit_sha2)
+        if !ref2.nil? 
+          left = _get_commit(ref)
+          right = _get_commit(ref2)
         else 
-          # passed one arg, diff between HEAD & :commit_sha 
-          left = repository.lookup(commit_sha)
+          # passed one arg, diff between HEAD & :ref 
+          left = _get_commit(ref)
           right = repository.head.target
         end 
 
