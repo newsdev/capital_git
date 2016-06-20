@@ -1,4 +1,5 @@
 require 'rugged'
+require 'securerandom'
 
 module CapitalGit
   class LocalRepository
@@ -239,10 +240,14 @@ module CapitalGit
       end
 
       def branches options={base: nil, paths: nil}
+        select_block = proc do |b|
+          _filter_branch(b, options)
+        end
+
         if options[:base].nil?
           # the branches BranchCollection contains remote branches,
           # while the .branch? method only returns true for local branches
-          return repository.branches.select {|b| b.branch? }.map do |b|
+          return repository.branches.select(&select_block).map do |b|
             {
               :name => b.name,
               :head? => b.head?,
@@ -250,7 +255,7 @@ module CapitalGit
             }
           end
         else
-          base_commit = repository.branches[options[:base]].target
+          base_commit = repository.branches[options[:base]]
 
           diff_opts = {}
           if options[:paths] 
@@ -258,10 +263,10 @@ module CapitalGit
           end
 
           # attempt to return how different each branch is from `options[:base]`
-          return repository.branches.select {|b| b.branch? }.map do |b|
+          return repository.branches.select(&select_block).map do |b|
             commit = b.target
 
-            diff = repository.diff(base_commit, commit, diff_opts)
+            diff = repository.diff(base_commit.target, commit, diff_opts)
             changes = _get_changes(diff)
             {
               :name => b.name,
@@ -277,6 +282,35 @@ module CapitalGit
             }
           end
         end
+      end
+
+      ##
+      # create a branch with a uniquely generated name
+      #
+      def create_branch(options={})
+        random_string = SecureRandom.hex # looks too much like an object id
+        branch_name = "capitalgit-#{random_string}"
+        if options[:base]
+          base = repository.branches[options[:base]].target.oid
+        else
+          base = repository.head.target.oid
+        end
+        ref = repository.branches.create(branch_name, base)
+        # ref # format branch ref
+        return {
+          :name => ref.name,
+          :head? => ref.head?,
+          :commit => format_commit(ref.target)
+        }
+      end
+
+      # either a branch object
+      # or a string
+      def delete_branch(branch, options={})
+        if branch.is_a? Hash
+          branch = branch[:name] || branch['name'] || nil
+        end
+        repository.branches.delete(branch)
       end
 
       # TODO how atomic can we make a write? so that it's not considered written
@@ -407,6 +441,40 @@ module CapitalGit
       end
 
 
+      def _filter_branch(branch, filter_opts={})
+        if (filter_opts[:author_email] || filter_opts[:author_name]) && branch.branch?
+          # check all commits differing between branch and base
+          # to see if any of those commits have one by either author email or name
+          if filter_opts[:base]
+            base_commit = repository.branches[options[:base]]
+          else
+            base_commit = repository.head
+          end
+
+          if branch.target.author[:email] == filter_opts[:author_email] ||
+              branch.target.author[:name] == filter_opts[:author_name]
+            return true
+          end
+
+          merge_base = repository.merge_base(branch.target, base_commit.target)
+          match = false
+          
+          # take this array up until merge_base.oid
+          branch.target.parents.each do |commit|
+            break if commit.oid == merge_base
+            if commit.author[:email] == filter_opts[:author_email] ||
+                commit.author[:name] == filter_opts[:author_name]
+              match = true
+              break
+            end
+          end
+
+          return match
+        else
+          return branch.branch?
+        end
+      end
+
       # returns a commit object based on a passed
       # - options hash specifying :branch or :sha
       # - string branch name
@@ -534,7 +602,7 @@ module CapitalGit
 
     PROXIED_HELPER_METHODS = %w{local_path}.map(&:to_sym)
     PROXIED_READ_METHODS = %w{branches list log read read_all diff show}.map(&:to_sym)
-    PROXIED_WRITE_METHODS = %w{write write_many delete}.map(&:to_sym)
+    PROXIED_WRITE_METHODS = %w{write write_many delete create_branch delete_branch}.map(&:to_sym)
 
     def method_missing(method, *args, &block)
       # puts "method_missing #{method}"

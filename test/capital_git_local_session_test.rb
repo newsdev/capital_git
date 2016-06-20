@@ -2,7 +2,6 @@ require 'test_helper'
 require 'tmpdir'
 require 'json'
 
-# TODO:
 # want to be able to call multiple repository methods
 # and skip the constant pulling/pushing in-between
 # and batch the interaction with server all into one

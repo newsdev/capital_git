@@ -123,6 +123,47 @@ capital_git /path/to/repos.yml
 ```
 
 
+### Branching and Merging
+
+You can also work on a branch, to test out your changes.
+
+# create a branch, (with a uniquely generated name (how?)) and return it,
+# perhaps not necessary?
+branch_name = repo.create_branch
+branch_name = repo.create_branch({:author => {:email => "albert.sun@nytimes.com", :name => "A"}})
+
+# write to the new branch
+repo.write_many(files, {:branch => branch_name})
+
+# return array of matching branch names
+# find any branches with unmerged commits by `albert.sun@nytimes.com`
+repo.find_branches(author_email: "albert.sun@nytimes.com") 
+
+# read back results from that branch
+files = repo.read_all(branch: branch_name)
+
+# merge branch back to master
+# merge result can either be a:
+# - commit (a successful automerge)
+#  - maybe with some flags showing 
+# - index, with conflicts (an unsuccessful merge)
+merge_result = repo.merge_branch(branch_name)
+
+# merge_result can then be returned to client
+# for a new commit set to be resolved
+merge_result
+
+# can be used to resolve conflicts after a failed merge
+# if commit_one and commit_two are both at the tip of their respective branches/HEAD
+# will create a new commit and set both as parents.
+# otherwise will... fail again?
+#    write just to the branch
+#    attempt to automerge
+#    either succeed or return more conflicts
+repo.write_merge_branch(files, {:parents => [commit_one, commit_two]})
+
+
+
 Server Mode
 ===========
 

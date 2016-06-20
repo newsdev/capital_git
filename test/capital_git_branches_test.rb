@@ -157,6 +157,55 @@ class CapitalGitWriteBranchesTest < Minitest::Test
     assert_equal 6, @repo.list(branch: "new-branch").length, "6 items on new branch after delete"
   end
 
+
+  def test_create_branch
+    branch_name = @repo.create_branch[:name]
+    # puts branch_name
+    refute_nil branch_name
+    assert_equal @repo.read_all, @repo.read_all(branch: branch_name)
+    assert_equal ["master", "packed", branch_name].sort, @repo.branches.map {|b| b[:name] }.sort
+
+    branch_name2 = @repo.create_branch(:base => "packed")[:name]
+    refute_nil branch_name2
+    assert_equal @repo.read_all(branch: "packed"), @repo.read_all(branch: branch_name2)
+    assert_equal ["master", "packed", branch_name, branch_name2].sort, @repo.branches.map {|b| b[:name] }.sort
+  end
+
+  def test_delete_branch
+    branch_name = @repo.create_branch[:name]
+    refute_nil branch_name
+    assert_equal @repo.read_all, @repo.read_all(branch: branch_name)
+    assert_equal ["master", "packed", branch_name].sort, @repo.branches.map {|b| b[:name] }.sort
+
+    @repo.delete_branch(branch_name)
+    assert_equal ["master", "packed"].sort, @repo.branches.map {|b| b[:name] }.sort
+  end
+
+  def test_find_branches
+    branch_name = @repo.create_branch[:name]
+    assert @repo.write("README", "brand new readme\n", {
+        :branch => branch_name,
+        :author => {:email => "albert.sun@nytimes.com", :name => "A"},
+        :message => "first commit on new branch"
+      })
+    refute_equal @repo.read_all, @repo.read_all(branch: branch_name)
+
+    assert_equal [branch_name], @repo.branches(author_email: "albert.sun@nytimes.com").map {|b| b[:name] }
+    assert_equal [branch_name], @repo.branches(author_name: "A").map {|b| b[:name] }
+    assert_equal [], @repo.branches(author_email: "tester@example.com").map {|b| b[:name] }
+    assert_equal ["master", "packed", branch_name].sort, @repo.branches.map {|b| b[:name] }.sort
+
+    assert @repo.write("README", "brand new readme\nwith a second line\n", {
+        :branch => branch_name,
+        :author => {:email => "tester@example.com", :name => "T"},
+        :message => "second commit on new branch"
+      })
+    assert_equal [branch_name], @repo.branches(author_email: "albert.sun@nytimes.com").map {|b| b[:name] }
+    assert_equal [branch_name], @repo.branches(author_name: "A").map {|b| b[:name] }
+    assert_equal [branch_name], @repo.branches(author_email: "tester@example.com").map {|b| b[:name] }
+  end
+
+
   def teardown
     FileUtils.remove_entry_secure(@tmp_path)
     FileUtils.remove_entry_secure(@tmp_path2)
