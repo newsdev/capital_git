@@ -72,7 +72,7 @@ module CapitalGit
 
         walker = Rugged::Walker.new(repository)
         walker.push(target.oid)
-        walker.sorting(Rugged::SORT_DATE)
+        walker.sorting(Rugged::SORT_DATE|Rugged::SORT_TOPO)
         walker.push(target)
         walker.map do |commit|
           format_commit(commit)
@@ -313,6 +313,86 @@ module CapitalGit
         repository.branches.delete(branch)
       end
 
+      def merge_branch(branch, options={})
+        if branch.is_a? Hash
+          branch = branch[:name] || branch['name'] || nil
+        end
+
+        other_branch = repository.branches[branch]
+        branch_commit = other_branch.target
+        head_commit = repository.head.target
+
+        merge_analysis = repository.merge_analysis(branch_commit)
+        # puts merge_analysis.inspect
+
+        # TODO: allow a no-ff option
+        # so that merges that represent "approving" changes are explicit.
+        # maybe if options has 'author' that always forces no-ff?
+
+        if merge_analysis.include?(:up_to_date)
+          # no merge needed
+          return format_commit(repository.head.target)
+        elsif merge_analysis.include?(:fastforward)
+          repository.checkout_tree(other_branch.target)
+          repository.reset(other_branch.target_id, :hard)
+          # TK: for non-head reference updates, use this
+          # repository.references.update(base_branch, other_branch.target_id)
+
+          if !repository.bare?
+            @parent.push!
+          end
+          if repository.head.target.oid == other_branch.target.oid
+            return format_commit(repository.head.target)
+          else
+            # TODO: handle any errors in fastforward
+            # puts repository.head.target.inspect
+            # puts other_branch.target.inspect
+            nil
+          end
+        elsif merge_analysis.include?(:normal)
+          puts "attempt automerge"
+          old_tree = head_commit.tree.oid
+
+          # puts repository.diff(head_commit, branch_commit).patch
+
+          # puts "HEAD"
+          # hidx = Rugged::Index.new
+          # hidx.read_tree(head_commit.tree)
+          # hidx.each {|entry| puts entry.inspect }
+          # puts "BRANCH"
+          # bidx = Rugged::Index.new
+          # bidx.read_tree(branch_commit.tree)
+          # bidx.each {|entry| puts entry.inspect }
+
+          # possible rugged bug
+          # # if renames true is passed, the index gets all screwed up
+          # merged_index = repository.merge_commits(head_commit, branch_commit, {renames: true})
+          merged_index = repository.merge_commits(head_commit, branch_commit)
+          # merged_index = head_commit.tree.merge(branch_commit.tree)
+          # puts "MERGED: conflicts: #{merged_index.conflicts?}"
+          # merged_index.each {|entry| puts entry.inspect }
+
+          if !merged_index.conflicts?
+            new_tree = merged_index.write_tree(repository)
+            if _create_commit(repository.head, new_tree, options.merge({parents: [head_commit.oid, branch_commit.oid]}))
+              return format_commit(repository.head.target)
+            end
+          else
+            puts "CONFLICTS!"
+            # TODO: handle conflicts
+            nil
+          end
+        elsif merge_analysis.include?(:unborn)
+          repository.reset(other_branch.target_id, :hard)
+          if !repository.bare?
+            @parent.push!
+          end
+          return format_commit(repository.head.target)
+        else
+          raise "Failed merge_analysis. Don't know what to do. #{merge_analysis}"
+        end
+      end
+
       # TODO how atomic can we make a write? so that it's not considered written
       # until something has been pushed to the remote and persisted?
       # TODO: maybe a :create_from option to specify which we are branching from?
@@ -520,7 +600,11 @@ module CapitalGit
         commit_options[:author] = options[:author] || committer
         commit_options[:committer] = committer || options[:author]
         commit_options[:message] = options[:message] || ""
-        commit_options[:parents] = repository.empty? ? [] : [ ref.target ].compact
+        if options[:parents].nil?
+          commit_options[:parents] = repository.empty? ? [] : [ ref.target ].compact
+        else
+          commit_options[:parents] = options[:parents]
+        end
 
         commit_oid = Rugged::Commit.create(repository, commit_options)
 
@@ -602,7 +686,7 @@ module CapitalGit
 
     PROXIED_HELPER_METHODS = %w{local_path}.map(&:to_sym)
     PROXIED_READ_METHODS = %w{branches list log read read_all diff show}.map(&:to_sym)
-    PROXIED_WRITE_METHODS = %w{write write_many delete create_branch delete_branch}.map(&:to_sym)
+    PROXIED_WRITE_METHODS = %w{write write_many delete create_branch delete_branch merge_branch}.map(&:to_sym)
 
     def method_missing(method, *args, &block)
       # puts "method_missing #{method}"
