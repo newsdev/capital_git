@@ -313,6 +313,20 @@ module CapitalGit
         repository.branches.delete(branch)
       end
 
+      # return commit object on success
+      # alternate merge object on conflict
+      # false on other failure
+      # 
+      # a calling app would want to...
+      # update all files with head
+      # update a revision log
+      # show conflicts to be merged
+      # show a diff
+
+      # TODO: allow a no-ff option to override merge_analysis fastforward
+      # so that merges that represent "approving" changes are explicit.
+      # maybe if options has 'author' that always forces no-ff?
+
       def merge_branch(branch, options={})
         if branch.is_a? Hash
           branch = branch[:name] || branch['name'] || nil
@@ -323,11 +337,6 @@ module CapitalGit
         head_commit = repository.head.target
 
         merge_analysis = repository.merge_analysis(branch_commit)
-        # puts merge_analysis.inspect
-
-        # TODO: allow a no-ff option
-        # so that merges that represent "approving" changes are explicit.
-        # maybe if options has 'author' that always forces no-ff?
 
         if merge_analysis.include?(:up_to_date)
           # no merge needed
@@ -347,22 +356,11 @@ module CapitalGit
             # TODO: handle any errors in fastforward
             # puts repository.head.target.inspect
             # puts other_branch.target.inspect
-            nil
+            return false
           end
         elsif merge_analysis.include?(:normal)
-          puts "attempt automerge"
+          # puts "attempt automerge"
           old_tree = head_commit.tree.oid
-
-          # puts repository.diff(head_commit, branch_commit).patch
-
-          # puts "HEAD"
-          # hidx = Rugged::Index.new
-          # hidx.read_tree(head_commit.tree)
-          # hidx.each {|entry| puts entry.inspect }
-          # puts "BRANCH"
-          # bidx = Rugged::Index.new
-          # bidx.read_tree(branch_commit.tree)
-          # bidx.each {|entry| puts entry.inspect }
 
           # possible rugged bug
           # # if renames true is passed, the index gets all screwed up
@@ -373,14 +371,50 @@ module CapitalGit
           # merged_index.each {|entry| puts entry.inspect }
 
           if !merged_index.conflicts?
+            # automerge succeeded =)
             new_tree = merged_index.write_tree(repository)
             if _create_commit(repository.head, new_tree, options.merge({parents: [head_commit.oid, branch_commit.oid]}))
               return format_commit(repository.head.target)
             end
           else
-            puts "CONFLICTS!"
-            # TODO: handle conflicts
-            nil
+            # automerge failed =(
+            # puts "CONFLICTS!"
+            # merged_index.each {|entry| puts entry.inspect }
+            # stage indexes
+            # http://stackoverflow.com/questions/4084921/what-does-the-git-index-contain-exactly
+            # https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging
+            # might also want to see git log between head and merge_head
+            return {
+              :success => false,
+              :orig_head => format_commit(head_commit),
+              :merge_head => format_commit(branch_commit),
+              :merge_base => format_commit(repository.lookup(repository.merge_base(branch_commit, head_commit))),
+              :conflicts => merged_index.conflicts.map do |conflict|
+                {
+                  :path => conflict[:ancestor][:path],
+                  :merge_file => merged_index.merge_file(conflict[:ancestor][:path], {
+                      :style => :standard
+                    })[:data],
+                  :ancestor => {
+                    :path => conflict[:ancestor][:path],
+                    :value => repository.read(conflict[:ancestor][:oid]).data.force_encoding('UTF-8')
+                  },
+                  :ours => {
+                    :path => conflict[:ours][:path],
+                    :value => repository.read(conflict[:ours][:oid]).data.force_encoding('UTF-8')
+                  },
+                  :theirs => {
+                    :path => conflict[:theirs][:path],
+                    :value => repository.read(conflict[:theirs][:oid]).data.force_encoding('UTF-8')
+                  }
+                }
+              end
+            }
+
+            # TODO:
+            # in addition to the conflicts
+            # we should also send the diff between merge_head and merge_base
+
           end
         elsif merge_analysis.include?(:unborn)
           repository.reset(other_branch.target_id, :hard)
@@ -391,6 +425,14 @@ module CapitalGit
         else
           raise "Failed merge_analysis. Don't know what to do. #{merge_analysis}"
         end
+      end
+
+      # TK
+      # an explicit force merge to resolve conflicts
+      # where the contents of files are specified
+      # along with the parent commit ids
+      def write_merge_branch files, branch, orig_head, merge_head, options={}
+
       end
 
       # TODO how atomic can we make a write? so that it's not considered written
@@ -425,7 +467,11 @@ module CapitalGit
           return false
         end
 
-        return _create_commit(ref, new_tree, options)
+        if commit_oid = _create_commit(ref, new_tree, options)
+          return format_commit(repository.lookup(commit_oid))
+        else
+          return false
+        end
       end
 
       # files is an array of
@@ -458,7 +504,11 @@ module CapitalGit
         end
         new_tree = index.write_tree(repository)
 
-        return _create_commit(ref, new_tree, options)
+        if commit_oid = _create_commit(ref, new_tree, options)
+          return format_commit(repository.lookup(commit_oid))
+        else
+          return false
+        end
       end
 
 
@@ -495,7 +545,11 @@ module CapitalGit
           return false
         end
 
-        return _create_commit(ref, new_tree, options)
+        if commit_oid = _create_commit(ref, new_tree, options)
+          return format_commit(repository.lookup(commit_oid))
+        else
+          return false
+        end
       end
 
       private
@@ -526,9 +580,9 @@ module CapitalGit
           # check all commits differing between branch and base
           # to see if any of those commits have one by either author email or name
           if filter_opts[:base]
-            base_commit = repository.branches[options[:base]]
+            base = repository.branches[options[:base]]
           else
-            base_commit = repository.head
+            base = repository.head
           end
 
           if branch.target.author[:email] == filter_opts[:author_email] ||
@@ -536,7 +590,7 @@ module CapitalGit
             return true
           end
 
-          merge_base = repository.merge_base(branch.target, base_commit.target)
+          merge_base = repository.merge_base(branch.target, base.target)
           match = false
           
           # take this array up until merge_base.oid
@@ -599,7 +653,7 @@ module CapitalGit
         commit_options[:tree] = new_tree
         commit_options[:author] = options[:author] || committer
         commit_options[:committer] = committer || options[:author]
-        commit_options[:message] = options[:message] || ""
+        commit_options[:message] = Rugged.prettify_message(options[:message] || "")
         if options[:parents].nil?
           commit_options[:parents] = repository.empty? ? [] : [ ref.target ].compact
         else
@@ -622,7 +676,8 @@ module CapitalGit
         end
 
         if ref.target.oid == commit_oid
-          return true
+          # return true
+          return commit_oid
         else
           return false
         end

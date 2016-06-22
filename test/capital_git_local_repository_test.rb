@@ -215,11 +215,15 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
   end
 
   def test_write
-    assert @repo.write("test-create-new-file","b", :message => "test_write"), "write succeeds"
+    write_commit = @repo.write("test-create-new-file","b", :message => "test_write")
+    assert write_commit, "write succeeds"
+    refute_nil write_commit[:commit]
     assert_equal "b", @repo.read("test-create-new-file")[:value], "Write to new file"
+    assert_equal @repo.log[0][:commit], write_commit[:commit]
 
     assert @repo.write("README", "fancy fancy", :message => "Update readme")
     assert_equal "fancy fancy", @repo.read("README")[:value], "Write to existing file"
+
 
     # test that it pushed
     # and that commit id's of the source and local copy match
@@ -227,9 +231,9 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
   end
 
   def test_write_encoding
-    assert @repo.write("README", "a curly quote’s bug", :message => "Update readme’s contents")
+    assert @repo.write("README", "a curly quote’s bug", :message => "Update readme’s contents\n")
     assert_equal "a curly quote’s bug", @repo.read("README")[:value], "Write to existing file"
-    assert_equal @repo.show[:message], "Update readme’s contents", "Write has the right commit message with curly quote"
+    assert_equal "Update readme’s contents\n", @repo.show[:message], "Write has the right commit message with curly quote"
 
     assert_equal(
         JSON.parse(@repo.show.to_json)["diff"]["changes"]["modified"][0]["patch"],
@@ -242,10 +246,13 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
   end
 
   def test_write_many
-    assert @repo.write_many([
+    write_result = @repo.write_many([
       {:path => "test-create-new-file", :value => "b"},
       {:path => "README", :value => "write_many hello world\n"}
-      ], :message => "test_write"), "write_many on existing repo succeeds"
+      ], :message => "test_write")
+    assert write_result, "write_many on existing repo succeeds"
+    refute_nil write_result[:commit]
+    assert_equal @repo.log[0][:commit], write_result[:commit]
     assert_equal "b", @repo.read("test-create-new-file")[:value], "write_many to new file succeeded"
     assert_equal "write_many hello world\n", @repo.read("README")[:value], "write_many to existing file succeeded"
     assert_equal 7, @repo.list.length
@@ -257,7 +264,11 @@ class CapitalGitLocalRepositoryWriteTest < Minitest::Test
     assert @repo.write("d","hello world", :message => "test_delete write")
     assert_equal "hello world", @repo.read("d")[:value]
 
-    assert @repo.delete("d", :message => "test_delete"), "Delete returns true when successfully deleted"
+    delete_result = @repo.delete("d", :message => "test_delete")
+    assert delete_result, "Delete returns true when successfully deleted"
+    refute_nil delete_result[:commit]
+    assert_equal @repo.log[0][:commit], delete_result[:commit]
+
     assert_nil @repo.read("d"), "Read returns nil when object doesn't exist"
     assert_equal false, @repo.delete("d", :message => "test_delete again"), "Delete returns false when object can't be deleted or doesn't exist"
 

@@ -142,6 +142,9 @@ repo.find_branches(author_email: "albert.sun@nytimes.com")
 # read back results from that branch
 files = repo.read_all(branch: branch_name)
 
+# equivalent to repo.diff between the merge_base of HEAD and branch and the branch
+repo.merge_preview(branch_name)
+
 # merge branch back to master
 # merge result can either be a:
 # - commit (a successful automerge)

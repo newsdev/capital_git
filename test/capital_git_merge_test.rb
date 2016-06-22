@@ -100,7 +100,6 @@ class CapitalGitHeadMergeTest < Minitest::Test
     merge_result = @repo.merge_branch(branch_name, message: "This is an automerge!")
     refute_nil merge_result
 
-    # puts merge_result.inspect
     # @repo.log(limit: 3).each {|c| puts c.inspect}
     # puts @repo.read_all
     assert_equal "Top piece of bread\nMayonnaise\nBacon\nLettuce\nTomato\nProvolone\nMustard\nBottom piece of bread", @repo.read("sandwich.txt")[:value]
@@ -114,7 +113,41 @@ class CapitalGitHeadMergeTest < Minitest::Test
   end
 
   def test_conflict_merge
-    skip
+    merge_base_sha = @repo.log[0][:commit]
+
+    merge_base = @repo.write("sandwich.txt", "Top piece of bread\nMayonnaise\nLettuce\nTomato\nProvolone\nCreole Mustard\nBottom piece of bread", {
+        :message => "create sandwich"
+      })
+    assert_equal "Top piece of bread\nMayonnaise\nLettuce\nTomato\nProvolone\nCreole Mustard\nBottom piece of bread", @repo.read("sandwich.txt")[:value], "sanity check"
+
+    branch_name = @repo.create_branch[:name]
+    orig_head = @repo.write("sandwich.txt", "Top piece of bread\nAvocado\nLettuce\nTomato\nProvolone\nCreole Mustard\nBottom piece of bread", {
+        :author => {:email => "albert.sun@nytimes.com", :name => "A"},
+        :message => "a commit on master (add Bacon)"
+      })
+    merge_head = @repo.write("sandwich.txt", "Top piece of bread\nKetchup\nLettuce\nTomato\nProvolone\nMustard\nBottom piece of bread", {
+        :branch => branch_name,
+        :author => {:email => "albert.sun@nytimes.com", :name => "B"},
+        :message => "a commit on branch (normal mustard)"
+      })
+
+    head_commit_sha = @repo.log[0][:commit]
+    branch_commit_sha = @repo.log(branch: branch_name)[0][:commit]
+
+    refute_equal @repo.read_all, @repo.read_all(branch: branch_name)
+    refute_equal @repo.log[0][:commit], @repo.log(branch: branch_name)[0][:commit]
+    refute_equal merge_base_sha, @repo.log[0][:commit]
+
+    merge_result = @repo.merge_branch(branch_name, message: "attempting an automerge!")
+    # puts merge_result
+    refute_nil merge_result
+    assert_equal false, merge_result[:success]
+    assert_equal [:success, :orig_head, :merge_head, :merge_base, :conflicts].sort, merge_result.keys.sort
+    assert_equal merge_base, merge_result[:merge_base]
+    assert_equal orig_head, merge_result[:orig_head]
+    assert_equal merge_head, merge_result[:merge_head]
+    assert_equal 1, merge_result[:conflicts].count
+    assert_equal [:merge_file, :path, :ancestor, :ours, :theirs].sort, merge_result[:conflicts][0].keys.sort
   end
 
   def test_write_merge
