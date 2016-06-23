@@ -16,15 +16,7 @@ module CapitalGit
       attr_reader :name, :directory
 
       def repository
-        if @repository.nil?
-          begin
-            @repository = Rugged::Repository.new(local_path)
-          rescue
-            @logger.info "Failed to create repository from #{local_path}"
-            @repository = nil
-          end
-        end
-        @repository
+        @parent.repository
       end
 
       def committer
@@ -63,7 +55,6 @@ module CapitalGit
 
       def log(options={})
         limit = options[:limit] || 10
-
 
         return [] if repository.empty?
 
@@ -281,7 +272,6 @@ module CapitalGit
 
       # TODO how atomic can we make a write? so that it's not considered written
       # until something has been pushed to the remote and persisted?
-      # TODO: maybe a :create_from option to specify which we are branching from?
       def write(key, value, options={})
         updated_oid = repository.write(value, :blob)
         index = repository.index
@@ -527,7 +517,6 @@ module CapitalGit
       @logger = CapitalGit.logger
 
       @local = Local.new(self, @name, options)
-      pull!
     end
 
     attr_reader :name, :url, :default_branch
@@ -542,12 +531,16 @@ module CapitalGit
       if PROXIED_HELPER_METHODS.include? method
         @local.send(method, *args, &block)
       elsif PROXIED_READ_METHODS.include? method
-        pull!
+        if @repository.nil?
+          repository # this clones/pulls the repo and defines @repository
+        else
+          pull!
+        end
         @local.send(method, *args, &block)
       elsif PROXIED_WRITE_METHODS.include? method
         @local.send(method, *args, &block)
       else
-        # puts "method missing #{method}"
+        super(method, *args, &block)
       end
     end
 
@@ -573,9 +566,16 @@ module CapitalGit
     end
 
     def repository
-      @local.repository
+      if @repository.nil?
+        begin
+          @repository = Rugged::Repository.new(@local.local_path)
+        rescue
+          @logger.info "Repository at #{@local.local_path} doesn't exist, will try to clone..."
+          clone!
+        end
+      end
+      @repository
     end
-
 
     ###
     # methods for interacting with remote
@@ -583,7 +583,11 @@ module CapitalGit
     ###
 
     def sync &blk
-      pull!
+      if @repository.nil?
+        clone!
+      else
+        pull!
+      end
       blk.call(@local)
     end
 
@@ -593,31 +597,37 @@ module CapitalGit
     # need to stub something internal to it
 
     def pull!
-      if repository.nil?
-        @logger.info "Repository at #{@local.local_path} doesn't exist"
-        return clone!
-      else
-        @logger.info "Fetching #{rugged_origin.name} into #{@local.local_path}"
-        opts = {}
-        opts[:credentials] = @db.credentials if @db.credentials
-        opts[:update_tips] = lambda do |ref, old_oid, new_oid|
-          @logger.info "Fetched #{ref}"
-          if (ref.gsub("refs/remotes/#{rugged_origin.name}/","") == repository.head.name.gsub("refs/heads/",""))
-            @logger.info "Updated #{repository.head.name} from #{old_oid} to #{new_oid}"
-            repository.reset(new_oid, :hard)
-          end
+      @logger.info "Fetching #{rugged_origin.name} into #{@local.local_path}"
+      opts = {}
+      opts[:credentials] = @db.credentials if @db.credentials
+      opts[:update_tips] = lambda do |ref, old_oid, new_oid|
+        @logger.info "Fetched #{ref}"
+        if (ref.gsub("refs/remotes/#{rugged_origin.name}/","") == @repository.head.name.gsub("refs/heads/",""))
+          @logger.info "Updated #{@repository.head.name} from #{old_oid} to #{new_oid}"
+          @repository.reset(new_oid, :hard)
         end
-        return rugged_origin.fetch("+refs/*:refs/*", opts)
       end
+      return rugged_origin.fetch("+refs/*:refs/*", opts)
     end
 
     def push!
-      if !repository.nil?
+      if !@repository.nil?
         @logger.info "Pushing #{@local.local_path} to #{rugged_origin.name}"
         opts = {}
         opts[:credentials] = @db.credentials if @db.credentials
-        rugged_origin.push(repository.references.each_name.to_a, opts)
+        rugged_origin.push(@repository.references.each_name.to_a, opts)
       end
+    end
+
+    def clone!
+      opts = {}
+      opts[:checkout_branch] = default_branch if default_branch
+      opts[:credentials] = @db.credentials if @db.credentials
+
+      @logger.info "Cloning #{remote_url} (#{default_branch}) into #{@local.local_path}"
+      Rugged::Repository.clone_at(remote_url, @local.local_path, opts)
+      @repository = Rugged::Repository.new(@local.local_path)
+      return rugged_origin.fetch("+refs/*:refs/*", opts) # TODO: make this unnecessary?
     end
 
     private
@@ -634,16 +644,6 @@ module CapitalGit
         name = parts.last
       end
       name.gsub(/\.git$/,"")
-    end
-
-    def clone!
-      opts = {}
-      opts[:checkout_branch] = default_branch if default_branch
-      opts[:credentials] = @db.credentials if @db.credentials
-
-      @logger.info "Cloning #{remote_url} (#{default_branch}) into #{@local.local_path}"
-      Rugged::Repository.clone_at(remote_url, @local.local_path, opts)
-      rugged_origin.fetch("+refs/*:refs/*", opts) # TODO: make this unnecessary?
     end
 
   end
