@@ -137,8 +137,6 @@ class CapitalGitHeadMergeTest < Minitest::Test
   end
 
   def test_conflict_merge
-    merge_base_sha = @repo.log[0][:commit]
-
     merge_base = @repo.write("sandwich.txt", "Top piece of bread\nMayonnaise\nLettuce\nTomato\nProvolone\nCreole Mustard\nBottom piece of bread", {
         :message => "create sandwich"
       })
@@ -160,7 +158,7 @@ class CapitalGitHeadMergeTest < Minitest::Test
 
     refute_equal @repo.read_all, @repo.read_all(branch: branch_name)
     refute_equal @repo.log[0][:commit], @repo.log(branch: branch_name)[0][:commit]
-    refute_equal merge_base_sha, @repo.log[0][:commit]
+    refute_equal merge_base[:commit], @repo.log[0][:commit]
 
     merge_result = @repo.merge_branch(branch_name, message: "attempting an automerge!")
     # puts merge_result
@@ -174,8 +172,37 @@ class CapitalGitHeadMergeTest < Minitest::Test
     assert_equal [:merge_file, :path, :ancestor, :ours, :theirs].sort, merge_result[:conflicts][0].keys.sort
   end
 
-  def test_write_merge
-    skip
+  def test_write_merge_branch
+    merge_base = @repo.write("sandwich.txt", "Top piece of bread\nMayonnaise\nLettuce\nTomato\nProvolone\nCreole Mustard\nBottom piece of bread", {
+        :message => "create sandwich"
+      })
+    branch_name = @repo.create_branch[:name]
+    orig_head = @repo.write("sandwich.txt", "Top piece of bread\nAvocado\nLettuce\nTomato\nProvolone\nCreole Mustard\nBottom piece of bread", {
+        :author => {:email => "albert.sun@nytimes.com", :name => "A"},
+        :message => "a commit on master (add avocado)"
+      })
+    merge_head = @repo.write("sandwich.txt", "Top piece of bread\nKetchup\nLettuce\nTomato\nProvolone\nMustard\nBottom piece of bread", {
+        :branch => branch_name,
+        :author => {:email => "albert.sun@nytimes.com", :name => "B"},
+        :message => "a commit on branch (add ketchup, change mustard)"
+      })
+
+    conflicted_merge = @repo.merge_branch(branch_name, message: "attempting an automerge!")
+
+    files = [
+      {:path => "sandwich.txt", :value => "Top piece of bread\nKetchup\nAvocado\nLettuce\nTomato\nProvolone\nMustard\nBottom piece of bread"}
+      ]
+
+    commit_msg = "Resolved conflicts and merged\n"
+    merge_result, msg = @repo.write_merge_branch(files, branch_name, conflicted_merge[:orig_head][:commit], conflicted_merge[:merge_head][:commit], {:message => commit_msg})
+
+    assert_equal @repo.log[0], merge_result
+    assert_equal @repo.log[1], merge_head
+    assert_equal @repo.log[2], orig_head
+    assert_equal commit_msg, merge_result[:message]
+    assert_equal "Top piece of bread\nKetchup\nAvocado\nLettuce\nTomato\nProvolone\nMustard\nBottom piece of bread", @repo.read("sandwich.txt")[:value]
+    # puts @repo.read_all
+    # puts @repo.log
   end
 
 

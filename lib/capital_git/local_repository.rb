@@ -369,9 +369,6 @@ module CapitalGit
           if repository.head.target.oid == other_branch.target.oid
             return format_commit(repository.head.target)
           else
-            # TODO: handle any errors in fastforward
-            # puts repository.head.target.inspect
-            # puts other_branch.target.inspect
             return false
           end
         elsif merge_analysis.include?(:normal)
@@ -429,8 +426,8 @@ module CapitalGit
 
             # TODO:
             # in addition to the conflicts
-            # we should also send the diff between merge_head and merge_base
-
+            # should we just send the whole index... or any files that have a diff with merge_base
+            # so the UI can display what merged cleanly?
           end
         elsif merge_analysis.include?(:unborn)
           repository.reset(other_branch.target_id, :hard)
@@ -443,12 +440,48 @@ module CapitalGit
         end
       end
 
-      # TK
       # an explicit force merge to resolve conflicts
       # where the contents of files are specified
       # along with the parent commit ids
       def write_merge_branch files, branch, orig_head, merge_head, options={}
+        return [false, "No files"] if files.length == 0
+        if branch.is_a? Hash
+          branch = branch[:name] || branch['name'] || nil
+        end
+        branch_commit = repository.branches[branch].target
+        head_commit = repository.head.target
 
+        if (branch_commit.oid != merge_head) && (head_commit.oid != orig_head)
+          # TK: heads no longer match, they've changed while you were resolving conflicts
+          # for now dump the resolved conflict and just return an error
+          # but maybe in the future, commit this as a new branch, then try and merge again?
+          # and return more conflicts?
+          return [false, "HEAD and MERGE_HEAD no longer match what was resolved"]
+        end
+
+        merged_index = repository.merge_commits(head_commit, branch_commit)
+
+        files.each do |file|
+          updated_oid = repository.write(file[:value], :blob)
+          merged_index.update(:path => file[:path], :oid => updated_oid, :mode => 0100644, :stage => 0)
+          merged_index.conflict_remove(file[:path])
+        end
+        if merged_index.conflicts?
+          # puts merged_index.each {|entry| puts entry.inspect }
+          return [false, "Not all conflicts resolved"] # there are still conflicts!
+          # TK: return those conflicts, formatted same as with merge_branch
+        end
+
+        if !options[:message]
+          options[:message] = "Resolved conflicts in #{files.map {|f| f[:path]}.join(' ')}"
+        end
+
+        new_tree = merged_index.write_tree(repository)
+        if commit_oid = _create_commit(repository.head, new_tree, options.merge({parents: [head_commit.oid, branch_commit.oid]}))
+          return [format_commit(repository.lookup(commit_oid)), nil]
+        else
+          return [false, "Failed to create commit"]
+        end
       end
 
       # TODO how atomic can we make a write? so that it's not considered written
@@ -515,7 +548,6 @@ module CapitalGit
 
         files.each do |file|
           updated_oid = repository.write(file[:value], :blob)
-          # index.read_tree(ref.target.tree)
           index.update(:path => file[:path], :oid => updated_oid, :mode => 0100644)
         end
         new_tree = index.write_tree(repository)
@@ -583,6 +615,7 @@ module CapitalGit
       def format_commit(commit)
         {
           :commit => commit.oid,
+          # :parents => commit.parents.map {|p| p.oid} # TODO: should we show parents or something? to indicate merge_commits?
           :message => commit.message,
           :author => commit.author,
           :committer => commit.committer,
@@ -759,7 +792,7 @@ module CapitalGit
 
     PROXIED_HELPER_METHODS = %w{local_path}.map(&:to_sym)
     PROXIED_READ_METHODS = %w{branches list log read read_all diff show merge_preview}.map(&:to_sym)
-    PROXIED_WRITE_METHODS = %w{write write_many delete create_branch delete_branch merge_branch}.map(&:to_sym)
+    PROXIED_WRITE_METHODS = %w{write write_many delete create_branch delete_branch merge_branch write_merge_branch}.map(&:to_sym)
 
     def method_missing(method, *args, &block)
       # puts "method_missing #{method}"
@@ -773,6 +806,7 @@ module CapitalGit
         @local.send(method, *args, &block)
       else
         # puts "method missing #{method}"
+        raise "method missing #{method}" # TODO: properly raise method missing
       end
     end
 
