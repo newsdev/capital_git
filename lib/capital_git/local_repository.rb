@@ -313,6 +313,22 @@ module CapitalGit
         repository.branches.delete(branch)
       end
 
+
+      # TODO:
+      # do we want a method that shows the individual commits between merge_base and merge_head?
+
+
+      def merge_preview(branch, options={})
+        if branch.is_a? Hash
+          branch = branch[:name] || branch['name'] || nil
+        end
+
+        merge_head = repository.branches[branch].target.oid
+        merge_base = repository.merge_base(repository.head.target, merge_head)
+
+        return diff(merge_base, merge_head, options)
+      end
+
       # return commit object on success
       # alternate merge object on conflict
       # false on other failure
@@ -617,7 +633,9 @@ module CapitalGit
       #   return the default, repository.head
       # - if the requested object can't be found, return nil
       def _get_commit to_resolve=nil
-        if to_resolve.is_a? Hash
+        if to_resolve.is_a?(Rugged::Commit)
+          return to_resolve
+        elsif to_resolve.is_a? Hash
           if to_resolve[:branch]
             ref = repository.branches[to_resolve[:branch]]
             return nil if ref.nil?
@@ -740,7 +758,7 @@ module CapitalGit
     attr_reader :name, :url, :default_branch
 
     PROXIED_HELPER_METHODS = %w{local_path}.map(&:to_sym)
-    PROXIED_READ_METHODS = %w{branches list log read read_all diff show}.map(&:to_sym)
+    PROXIED_READ_METHODS = %w{branches list log read read_all diff show merge_preview}.map(&:to_sym)
     PROXIED_WRITE_METHODS = %w{write write_many delete create_branch delete_branch merge_branch}.map(&:to_sym)
 
     def method_missing(method, *args, &block)

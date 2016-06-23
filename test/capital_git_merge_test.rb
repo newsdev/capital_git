@@ -70,6 +70,30 @@ class CapitalGitHeadMergeTest < Minitest::Test
     assert_equal last_commit_sha, @repo.log[0][:commit]
   end
 
+  def test_merge_preview
+    merge_base = @repo.write("sandwich.txt", "Top piece of bread\nMayonnaise\nLettuce\nTomato\nProvolone\nCreole Mustard\nBottom piece of bread", {
+        :message => "create sandwich"
+      })
+    branch_name = @repo.create_branch[:name]
+    orig_head = @repo.write("sandwich.txt", "Top piece of bread\nMayonnaise\nBacon\nLettuce\nTomato\nProvolone\nCreole Mustard\nBottom piece of bread", {
+        :author => {:email => "albert.sun@nytimes.com", :name => "A"},
+        :message => "a commit on master (add Bacon)"
+      })
+    merge_head = @repo.write("sandwich.txt", "Top piece of bread\nMayonnaise\nLettuce\nTomato\nProvolone\nMustard\nBottom piece of bread", {
+        :branch => branch_name,
+        :author => {:email => "albert.sun@nytimes.com", :name => "B"},
+        :message => "a commit on branch (normal mustard)"
+      })
+
+    # merge preview shows the diff between merge_base and merge_head
+    diff_val = {:commits => [merge_base[:commit], merge_head[:commit]], :files_changed=>1, :additions=>1, :deletions=>1, :changes=>{:modified=>[{:old_path=>"sandwich.txt", :new_path=>"sandwich.txt", :patch=>"diff --git a/sandwich.txt b/sandwich.txt\nindex c76e978..d41fe58 100644\n--- a/sandwich.txt\n+++ b/sandwich.txt\n@@ -3,5 +3,5 @@ Mayonnaise\n Lettuce\n Tomato\n Provolone\n-Creole Mustard\n+Mustard\n Bottom piece of bread\n\\ No newline at end of file\n", :additions=>1, :deletions=>1}]}}
+    merge_preview_diff = @repo.merge_preview(branch_name)
+    regular_diff = @repo.diff(merge_base[:commit], merge_head[:commit])
+
+    assert_equal regular_diff, merge_preview_diff
+    assert_equal diff_val, merge_preview_diff
+  end
+
   def test_auto_merge
     merge_base_sha = @repo.log[0][:commit]
 
