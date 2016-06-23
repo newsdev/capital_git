@@ -6,9 +6,6 @@ require 'json'
 # and skip the constant pulling/pushing in-between
 # and batch the interaction with server all into one
 # so...
-# call these transactions?
-# 
-# some form of block syntax?
 #
 # repo.sync do |r|
 #   r.list
@@ -17,103 +14,110 @@ require 'json'
 #  
 # within the block, one pull! is issued before all statements
 # and they then don't individually call sync
-# 
-# or more explicitly
-# 
-# repo.start_synced
-# repo.list
-# repo.log
-# repo.end_synced
-# 
-# tx = repo.get_transaction
-# tx.list
-# tx.log
-# tx.end_transaction
-# 
-# 
-# or use the system clock and a config setting (with a default)
-# CapitalGit.config.sync_interval = 5s
-#
-# repo.list    # will pull
-# repo.log     # won't pull
-#              # wait 5 seconds
-# repo.list    # will pull
-#
-# then any calls that take place within 5 seconds of a previous pull will not pull again
-
 
 class CapitalGitSessionTest < Minitest::Test
   def setup
     @tmp_path = Dir.mktmpdir("capital-git-test-repos")
     @fixtures_path = File.expand_path("fixtures", File.dirname(__FILE__))
     @database = CapitalGit::Database.new({:local_path => @tmp_path})
+  end
+
+  def test_one_request
+    clone_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :clone!) { clone_count += 1}
+    pull_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :pull!) { pull_count += 1}
+
     @repo = @database.connect("#{@fixtures_path}/testrepo.git")
+    @repo.log
+
+    assert_equal 1, clone_count
+    assert_equal 0, pull_count
+  end
+
+  def test_two_requests
+    clone_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :clone!) { clone_count += 1}
+    pull_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :pull!) { pull_count += 1}
+
+    @repo = @database.connect("#{@fixtures_path}/testrepo.git")
+    @repo.log
+    @repo.list
+
+    assert_equal 1, clone_count
+    assert_equal 1, pull_count
   end
 
   def test_synchronized_requests
-    mock = MiniTest::Mock.new
-    mock.expect(:call, {})
-    
-    @repo.stub :"pull!", mock do
-      @repo.sync do |r|
-        r.list
-        r.log
-        r.read_all
-      end
+    clone_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :clone!) { clone_count += 1}
+    pull_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :pull!) { pull_count += 1}
+
+    @repo = @database.connect("#{@fixtures_path}/testrepo.git")
+
+    @repo.sync do |r|
+      r.list
+      r.log
+      r.read_all
     end
 
-    # expect pull! to only be called once
-    mock.verify
+    assert_equal 1, clone_count
+    assert_equal 0, pull_count
   end
 
   def test_repeated_sync1_requests
-    mock = MiniTest::Mock.new
-    mock.expect(:call, {})
-    mock.expect(:call, {})
-    
-    @repo.stub :"pull!", mock do
-      @repo.sync do |r|
-        r.log
-      end
-      @repo.list
-    end
+    clone_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :clone!) { clone_count += 1}
+    pull_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :pull!) { pull_count += 1}
 
-    mock.verify
+    @repo = @database.connect("#{@fixtures_path}/testrepo.git")
+    @repo.sync do |r|
+      r.log
+    end
+    @repo.list
+
+    assert_equal 1, clone_count
+    assert_equal 1, pull_count
   end
 
   def test_repeated_sync2_requests
-    mock = MiniTest::Mock.new
-    mock.expect(:call, {})
-    mock.expect(:call, {})
-    
-    @repo.stub :"pull!", mock do
-      @repo.sync do |r|
-        r.log
-      end
-      @repo.sync do |r|
-        r.list
-      end
+    clone_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :clone!) { clone_count += 1}
+    pull_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :pull!) { pull_count += 1}
+
+    @repo = @database.connect("#{@fixtures_path}/testrepo.git")
+    @repo.sync do |r|
+      r.log
+    end
+    @repo.sync do |r|
+      r.list
     end
 
-    mock.verify
+    assert_equal 1, clone_count
+    assert_equal 1, pull_count
   end
 
   def test_repeated_sync3_requests
-    mock = MiniTest::Mock.new
-    mock.expect(:call, {})
-    mock.expect(:call, {})
-    
-    @repo.stub :"pull!", mock do
-      @repo.sync do |r|
-        r.log
-        r.read_all
-      end
-      @repo.sync do |r|
-        r.list
-      end
+    clone_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :clone!) { clone_count += 1}
+    pull_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :pull!) { pull_count += 1}
+
+    @repo = @database.connect("#{@fixtures_path}/testrepo.git")
+    @repo.sync do |r|
+      r.log
+      r.read_all
+    end
+    @repo.sync do |r|
+      r.list
     end
 
-    mock.verify
+    assert_equal 1, clone_count
+    assert_equal 1, pull_count
   end
 
   def teardown

@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    capital_git (0.3.1)
+    capital_git (0.3.2)
       json
       rugged
       sinatra

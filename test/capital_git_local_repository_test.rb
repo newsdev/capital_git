@@ -12,6 +12,7 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
 
   def test_that_it_exists
     refute_nil @repo
+    @repo.log
     assert Dir.exists? @repo.local_path
     assert_kind_of Rugged::Repository, @repo.repository
   end
@@ -194,6 +195,37 @@ class CapitalGitLocalRepositoryTest < Minitest::Test
 
   def teardown
     FileUtils.remove_entry_secure(@tmp_path)
+  end
+end
+
+class CapitalGitLocalPullTest < Minitest::Test
+  def setup
+    @tmp_path = Dir.mktmpdir("capital-git-test-repos")
+    @fixtures_path = File.expand_path("fixtures", File.dirname(__FILE__))
+    @database = CapitalGit::Database.new({:local_path => @tmp_path})
+    
+  end
+
+  def teardown
+    FileUtils.remove_entry_secure(@tmp_path)
+  end
+
+  def test_pull_sequence
+    @repo = @database.connect("#{@fixtures_path}/testrepo.git")
+    refute_nil @repo
+    refute Dir.exists? @repo.local_path
+    assert @repo.repository
+    assert Dir.exists? @repo.local_path
+    assert_kind_of Rugged::Repository, @repo.repository
+  end
+
+  def test_pull_sequence2
+    @repo = @database.connect("#{@fixtures_path}/testrepo.git")
+    refute_nil @repo
+    refute Dir.exists? @repo.local_path
+    assert @repo.log
+    assert Dir.exists? @repo.local_path
+    assert_kind_of Rugged::Repository, @repo.repository
   end
 end
 
