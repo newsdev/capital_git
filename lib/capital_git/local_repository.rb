@@ -827,6 +827,7 @@ module CapitalGit
       if @repository.nil?
         begin
           @repository = Rugged::Repository.new(@local.local_path)
+          pull!
         rescue
           @logger.info "Repository at #{@local.local_path} doesn't exist, will try to clone..."
           clone!
@@ -842,7 +843,7 @@ module CapitalGit
 
     def sync &blk
       if @repository.nil?
-        clone!
+        repository
       else
         pull!
       end
