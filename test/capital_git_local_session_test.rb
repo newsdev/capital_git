@@ -49,6 +49,39 @@ class CapitalGitSessionTest < Minitest::Test
     assert_equal 1, pull_count
   end
 
+  def test_repo_with_existing_dir
+    clone_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :clone!) { clone_count += 1}
+    pull_count = 0
+    Spy.on_instance_method(CapitalGit::LocalRepository, :pull!) { pull_count += 1}
+
+    @repo = @database.connect("#{@fixtures_path}/testrepo.git", :default_branch => "master")
+
+    revisions = @repo.sync do |repo|
+      commits = repo.log limit:100
+      commits.each do |r|
+        r.merge!(repo.show(r[:commit]))
+      end
+      commits
+    end
+
+    assert_equal 1, clone_count
+    assert_equal 0, pull_count
+
+    @repo2 = @database.connect("#{@fixtures_path}/testrepo.git", :default_branch => "master")
+
+    revisions = @repo2.sync do |repo|
+      commits = repo.log limit:100
+      commits.each do |r|
+        r.merge!(repo.show(r[:commit]))
+      end
+      commits
+    end
+
+    assert_equal 1, clone_count
+    assert_equal 1, pull_count
+  end
+
   def test_synchronized_requests
     clone_count = 0
     Spy.on_instance_method(CapitalGit::LocalRepository, :clone!) { clone_count += 1}
