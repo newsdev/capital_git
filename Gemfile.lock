@@ -15,6 +15,8 @@ GEM
     rack (1.6.4)
     rack-protection (1.5.3)
       rack
+    rack-test (0.6.2)
+      rack (>= 1.0)
     rake (10.5.0)
     rugged (0.24.0)
     shotgun (0.9.1)
@@ -33,6 +35,7 @@ DEPENDENCIES
   byebug
   capital_git!
   minitest
+  rack-test
   rake (~> 10.0)
   shotgun
 

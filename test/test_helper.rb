@@ -3,9 +3,13 @@ require 'capital_git'
 require 'time'
 
 CapitalGit.logger.level = Logger::ERROR
+ENV["RACK_ENV"] = "test"
 ENV["CAPITAL_GIT_ENV"] = "test"
 
 require 'minitest/autorun'
+
+require 'capital_git/web_app'
+require 'rack/test'
 
 # http://stackoverflow.com/a/25340729
 module Spy
