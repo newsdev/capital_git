@@ -165,7 +165,7 @@ class CapitalGitWriteBranchesTest < Minitest::Test
     assert_equal @repo.read_all, @repo.read_all(branch: branch_name)
     assert_equal ["master", "packed", branch_name].sort, @repo.branches.map {|b| b[:name] }.sort
 
-    branch_name2 = @repo.create_branch(:base => "packed")[:name]
+    branch_name2 = @repo.create_branch(:head => "packed")[:name]
     refute_nil branch_name2
     assert_equal @repo.read_all(branch: "packed"), @repo.read_all(branch: branch_name2)
     assert_equal ["master", "packed", branch_name, branch_name2].sort, @repo.branches.map {|b| b[:name] }.sort

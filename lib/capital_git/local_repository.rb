@@ -281,11 +281,7 @@ module CapitalGit
       def create_branch(options={})
         random_string = SecureRandom.hex # looks too much like an object id
         branch_name = "capitalgit-#{random_string}"
-        if options[:base]
-          base = repository.branches[options[:base]].target.oid
-        else
-          base = repository.head.target.oid
-        end
+        base = repository.head.target.oid
         ref = repository.branches.create(branch_name, base)
         # ref # format branch ref
         return {
@@ -313,9 +309,10 @@ module CapitalGit
         if branch.is_a? Hash
           branch = branch[:name] || branch['name'] || nil
         end
+        base = lambda { return repository.head }
 
         merge_head = repository.branches[branch].target.oid
-        merge_base = repository.merge_base(repository.head.target, merge_head)
+        merge_base = repository.merge_base(base.call.target, merge_head)
 
         return diff(merge_base, merge_head, options)
       end
@@ -339,17 +336,24 @@ module CapitalGit
           branch = branch[:name] || branch['name'] || nil
         end
 
+        base = lambda { return repository.head }
+
         other_branch = repository.branches[branch]
         branch_commit = other_branch.target
-        head_commit = repository.head.target
+        # head_commit = repository.head.target
+        head_commit = base.call.target
 
+
+        # only works on HEAD
+        # http://www.rubydoc.info/gems/rugged/Rugged/Repository#merge_analysis-instance_method
+        # :normal, :up_to_date, :fastforward, :unborn
         merge_analysis = repository.merge_analysis(branch_commit)
 
         if merge_analysis.include?(:up_to_date)
           # no merge needed
-          return format_commit(repository.head.target)
+          return format_commit(base.call.target)
         elsif merge_analysis.include?(:fastforward)
-          repository.checkout_tree(other_branch.target)
+          # repository.checkout_tree(other_branch.target) # unnecessary
           repository.reset(other_branch.target_id, :hard)
           # TK: for non-head reference updates, use this
           # repository.references.update(base_branch, other_branch.target_id)
@@ -357,8 +361,8 @@ module CapitalGit
           if !repository.bare?
             @parent.push!
           end
-          if repository.head.target.oid == other_branch.target.oid
-            return format_commit(repository.head.target)
+          if base.call.target.oid == other_branch.target.oid
+            return format_commit(base.call.target)
           else
             return false
           end
@@ -377,8 +381,10 @@ module CapitalGit
           if !merged_index.conflicts?
             # automerge succeeded =)
             new_tree = merged_index.write_tree(repository)
-            if _create_commit(repository.head, new_tree, options.merge({parents: [head_commit.oid, branch_commit.oid]}))
-              return format_commit(repository.head.target)
+            opts = options.merge({parents: [head_commit.oid, branch_commit.oid]})
+            opts[:branch] = options[:head] if options[:head]
+            if _create_commit(base.call, new_tree, opts)
+              return format_commit(base.call.target)
             end
           else
             # automerge failed =(
@@ -425,7 +431,7 @@ module CapitalGit
           if !repository.bare?
             @parent.push!
           end
-          return format_commit(repository.head.target)
+          return format_commit(base.call.target)
         else
           raise "Failed merge_analysis. Don't know what to do. #{merge_analysis}"
         end
@@ -439,14 +445,21 @@ module CapitalGit
         if branch.is_a? Hash
           branch = branch[:name] || branch['name'] || nil
         end
+        base = lambda { return repository.head }
+
         branch_commit = repository.branches[branch].target
-        head_commit = repository.head.target
+        head_commit = base.call.target
 
         if (branch_commit.oid != merge_head) && (head_commit.oid != orig_head)
           # TK: heads no longer match, they've changed while you were resolving conflicts
           # for now dump the resolved conflict and just return an error
           # but maybe in the future, commit this as a new branch, then try and merge again?
           # and return more conflicts?
+          # maybe instead:
+          #    write just to the branch?
+          #    attempt to automerge?
+          #    either succeed or return more conflicts?
+
           return [false, "HEAD and MERGE_HEAD no longer match what was resolved"]
         end
 
@@ -468,7 +481,9 @@ module CapitalGit
         end
 
         new_tree = merged_index.write_tree(repository)
-        if commit_oid = _create_commit(repository.head, new_tree, options.merge({parents: [head_commit.oid, branch_commit.oid]}))
+        opts = options.merge({parents: [head_commit.oid, branch_commit.oid]})
+        opts[:branch] = options[:head] if options[:head]
+        if commit_oid = _create_commit(base.call, new_tree, opts)
           return [format_commit(repository.lookup(commit_oid)), nil]
         else
           return [false, "Failed to create commit"]
@@ -772,6 +787,7 @@ module CapitalGit
       @url = url
       @name = parse_name_from_url(@url)
       @default_branch = options[:default_branch] || options["default_branch"] # TODO: can we default to remote's default branch?
+
       @logger = CapitalGit.logger
 
       @local = Local.new(self, @name, options)
@@ -785,8 +801,18 @@ module CapitalGit
 
     def method_missing(method, *args, &block)
       # puts "method_missing #{method}"
+      set_head = lambda do
+        if !args.last.nil? && args.last.is_a?(Hash) && args.last[:head]
+          repository.head = repository.branches[args.last[:head]].canonical_name
+          repository.checkout_head(:strategy => :force)
+        elsif !@default_branch.nil?
+          repository.head = repository.branches[@default_branch].canonical_name
+          repository.checkout_head(:strategy => :force)
+        end
+      end
 
       if PROXIED_HELPER_METHODS.include? method
+        set_head.call
         @local.send(method, *args, &block)
       elsif PROXIED_READ_METHODS.include? method
         if @repository.nil?
@@ -794,8 +820,10 @@ module CapitalGit
         else
           pull!
         end
+        set_head.call
         @local.send(method, *args, &block)
       elsif PROXIED_WRITE_METHODS.include? method
+        set_head.call
         @local.send(method, *args, &block)
       else
         super(method, *args, &block)
@@ -874,7 +902,7 @@ module CapitalGit
         @logger.info "Pushing #{@local.local_path} to #{rugged_origin.name}"
         opts = {}
         opts[:credentials] = @db.credentials if @db.credentials
-        rugged_origin.push(@repository.references.each_name.to_a, opts)
+        rugged_origin.push(@repository.references.select {|r| r.branch? }.map {|r| r.name }, opts)
       end
     end
 
