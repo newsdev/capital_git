@@ -490,42 +490,10 @@ module CapitalGit
         end
       end
 
-      # TODO how atomic can we make a write? so that it's not considered written
-      # until something has been pushed to the remote and persisted?
+      # write and commit a single file
       def write(key, value, options={})
-        updated_oid = repository.write(value, :blob)
-        index = repository.index
-
-        if repository.empty?
-          new_branch = options[:branch] || "master"
-          ref = "refs/heads/#{new_branch}"
-        else
-          if options[:branch]
-            ref = repository.references["refs/heads/#{options[:branch]}"]
-            if !ref
-              ref = repository.references.create("refs/heads/#{options[:branch]}", repository.head.target.oid)
-            end
-          else
-            ref = repository.head
-          end
-
-          tree = ref.target.tree
-          index.read_tree(tree)
-        end
-
-        index.update(:path => key, :oid => updated_oid, :mode => 0100644)
-        new_tree = index.write_tree(repository)
-
-        # if nothing changed, don't commit
-        if !repository.empty? && (tree.oid == new_tree)
-          return false
-        end
-
-        if commit_oid = _create_commit(ref, new_tree, options)
-          return format_commit(repository.lookup(commit_oid))
-        else
-          return false
-        end
+        files = [{path: key, value: value}]
+        return write_many(files, options)
       end
 
       # files is an array of
@@ -556,6 +524,14 @@ module CapitalGit
           index.update(:path => file[:path], :oid => updated_oid, :mode => 0100644)
         end
         new_tree = index.write_tree(repository)
+
+        # if nothing changed, don't commit
+        if !repository.empty? && (tree.oid == new_tree)
+          return false
+        end
+
+        # TODO how atomic can we make a write? so that it's not considered written
+        # until something has been pushed to the remote and persisted?
 
         if commit_oid = _create_commit(ref, new_tree, options)
           return format_commit(repository.lookup(commit_oid))
